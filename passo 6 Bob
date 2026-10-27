@@ -1,0 +1,14 @@
+4. Deploy — Comandos em Ordem
+
+
+# 1. Ativar o ambiente
+orchestrate env activate <seu-ambiente>
+
+# 2. Criar a knowledge base e indexar os documentos
+orchestrate knowledge-bases import -f knowledge_base/compras_kb.yaml
+
+# 3. Importar as ferramentas Python
+orchestrate tools import -k python -f tools/compras_tools.py
+
+# 4. Importar o agente
+orchestrate agents import -f agents/analista_conformidade.yaml
