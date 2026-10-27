@@ -1,0 +1,16 @@
+## O que foi alterado
+## knowledge_base/docs/historico_compras.csv
+## Adicionada a coluna localizacao em todos os registros. Os pedidos PED-006 e PED-007 ficam intencionalmente com localização em branco para simular casos reais de ausência.
+
+## tools/compras_tools.py — mudanças principais
+## auditar_compras — agora possui dois blocos de validação independentes:
+
+
+# Validação de preço (> 15% da média)
+if variacao > 15:
+    motivos.append(...)
+
+# Validação de localização
+localizacao_ausente = not localizacao or str(localizacao).strip() == ""
+if localizacao_ausente:
+    motivos.append("Localização de origem da compra não informada no registro")
