@@ -1,0 +1,18 @@
+{
+  "aprovadores": [
+    {
+      "id": 1,
+      "nome": "Ana Paula Ferreira",
+      "cargo": "Gerente de Compras",
+      "email": "ana.ferreira@empresa.com.br",
+      "telefone": "+55 11 98765-4321"
+    },
+    {
+      "id": 2,
+      "nome": "Carlos Eduardo Lima",
+      "cargo": "Diretor Financeiro",
+      "email": "carlos.lima@empresa.com.br",
+      "telefone": "+55 11 97654-3210"
+    }
+  ]
+}

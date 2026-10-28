@@ -1,0 +1,26 @@
+spec_version: v1
+kind: knowledge_base
+name: compras_conformidade_kb
+description: |
+  Contém o histórico de compras detalhado de 8 empresas corporativas (Mai–Out/2026),
+  incluindo valores mensais, localização de origem, fornecedores e itens adquiridos.
+  Também armazena a matriz de contatos/aprovadores de cada empresa (Administrativo e
+  Pessoa de Confiança) responsáveis por validar transações com divergência de preço
+  ou localização ausente. Inclui ainda histórico de compras interno com médias de
+  referência para comparação unitária de itens.
+documents:
+  - "knowledge_base/docs/empresas_corporativas.json"
+  - "knowledge_base/docs/relatorio_corporativo_fonte.md"
+  - "knowledge_base/docs/historico_compras.csv"
+  - "knowledge_base/docs/matriz_aprovadores.json"
+conversational_search_tool:
+  generation:
+    max_docs_passed_to_llm: 10
+    generated_response_length: Verbose
+  confidence_thresholds:
+    retrieval_confidence_threshold: Low
+    response_confidence_threshold: Low
+  query_rewrite:
+    enabled: true
+  citations:
+    citations_shown: -1

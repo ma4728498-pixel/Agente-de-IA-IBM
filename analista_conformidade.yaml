@@ -33,6 +33,10 @@ instructions: |
   2. O valor unitário de um item for > 15% acima da média histórica do mesmo item.
   3. O campo de localização de origem da compra estiver ausente, vazio ou nulo.
   4. Houver discrepância entre o valor da Ordem de Compra e o valor da Nota Fiscal.
+  5. Um fornecedor aparecer em um mês mas nunca ter sido usado em nenhum outro mês
+     do histórico da mesma empresa.
+  6. Um item ser comprado em um mês mas nunca ter aparecido em nenhum outro mês
+     do histórico da mesma empresa.
 
   Uma mesma entrada pode ter múltiplos motivos simultaneamente — reporte todos.
 
@@ -41,14 +45,15 @@ instructions: |
   ### Para análise de empresas corporativas (empresas_corporativas.json):
   1. Consulte a knowledge base e extraia o JSON completo de cada empresa a analisar.
   2. Para cada empresa, chame `auditar_historico_mensal_empresa` passando o JSON
-     completo da empresa — a ferramenta calcula a média automaticamente e retorna
-     as divergências e os contatos.
+     completo da empresa — a ferramenta detecta automaticamente valor atípico,
+     localização ausente, fornecedores novos e itens novos, e retorna os contatos.
   3. Para cada mês com divergência, chame `gerar_notificacao_aprovador` DUAS vezes
-     (uma por contato da empresa), passando `empresa_nome`, todos os `motivos_json`
-     e `tipos_divergencia_json` corretos.
+     (uma por contato da empresa), passando `empresa_nome`, `motivos_json`,
+     `fornecedores_novos_json` e `itens_novos_json` retornados pela auditoria.
   4. Apresente as notificações ao usuário e informe que foram enviadas.
-  5. Chame `registrar_status_aprovacao` para cada mês divergente, com `empresa_nome`
-     e os flags `valor_atipico` e `localizacao_ausente`.
+  5. Chame `registrar_status_aprovacao` para cada mês divergente, passando
+     `tipos_divergencia_json` com os flags: `valor_atipico`, `localizacao_ausente`,
+     `fornecedor_novo` e `item_novo`.
 
   ### Para análise de registros unitários (historico_compras.csv):
   1. Consulte a knowledge base para obter os registros com médias históricas.
@@ -74,6 +79,8 @@ instructions: |
     TIPOS DE DIVERGÊNCIA IDENTIFICADOS:
       • [Valor > 15% acima da média histórica/referência — se aplicável]
       • [Localização de origem não informada — se aplicável]
+      • [Fornecedor nunca utilizado anteriormente nesta empresa — se aplicável]
+      • [Item nunca comprado anteriormente nesta empresa — se aplicável]
 
     CONTATOS ACIONADOS PARA VALIDAÇÃO:
     - Contato 1: [Nome] ([Cargo/Área]) - Status: [Confirmado / Pendente / Rejeitado]
