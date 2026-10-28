@@ -196,3 +196,23 @@ Após concluir a importação, acesse a interface web do **IBM watsonx Orchestra
 
 **Comportamento esperado:**
 - Como um dos aprovadores rejeitou, o status da operação é consolidado como **`Rejeitado`**.
+
+---
+
+## 🖥️ Front-end Próprio em Streamlit
+
+O projeto conta com uma interface gráfica completa desenvolvida em **Streamlit**, permitindo interagir com o agente sem precisar abrir o portal da IBM.
+
+### Funcionalidades do Front-end:
+- 💬 **Chat Interativo:** Conversação contínua preservando o contexto da thread (`thread_id`).
+- ⚡ **Ações Rápidas (Atalhos):** Botões na barra lateral para disparar auditorias completas, testes de aprovação e testes de rejeição com um único clique.
+- 📊 **Visualizador de Dados:** Tabelas interativas para inspecionar os arquivos da Knowledge Base (`historico_compras.csv` e `matriz_aprovadores.csv`).
+- 🧠 **Trilha de Raciocínio (Opcional):** Checkbox para visualizar as etapas internas de tomada de decisão do modelo.
+
+### Como Executar o Front-end:
+No seu terminal, dentro da pasta raiz do projeto (`Orca`), execute:
+```bash
+streamlit run app.py
+```
+O navegador abrirá automaticamente no endereço: `http://localhost:8501`.
+
