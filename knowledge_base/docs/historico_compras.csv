@@ -1,8 +1,0 @@
-pedido_id,data,item,fornecedor,qtd,valor_unitario,valor_total,media_historica,localizacao
-PED-001,2024-10-15,Papel A4,Papelaria Alpha,500,12.50,6250.00,10.80,São Paulo - SP
-PED-002,2024-11-02,Caneta Esferográfica,OfficeMax,2000,1.90,3800.00,1.65,Rio de Janeiro - RJ
-PED-003,2024-11-20,Toner HP LaserJet,TechSupplies,10,320.00,3200.00,245.00,Belo Horizonte - MG
-PED-004,2024-12-01,Resma Papel A3,Papelaria Alpha,100,18.00,1800.00,15.50,Curitiba - PR
-PED-005,2024-12-10,Notebook Dell Latitude,TechSupplies,5,5200.00,26000.00,4300.00,São Paulo - SP
-PED-006,2024-12-15,Cadeira Ergonômica,Móveis Corporativos,15,850.00,12750.00,820.00,
-PED-007,2024-12-20,Monitor 27 Pol,TechSupplies,8,1450.00,11600.00,1100.00,

@@ -2,6 +2,10 @@ import os
 import sys
 import json
 import streamlit as st
+from dotenv import load_dotenv
+
+# Carrega variáveis do arquivo .env (ORCHESTRATE_URL, ORCHESTRATE_API_KEY)
+load_dotenv()
 
 # Garante codificação UTF-8 no Windows
 sys.stdout.reconfigure(encoding="utf-8")
