@@ -69,18 +69,66 @@ com o histórico mensal de 8 empresas (Mai–Out/2026), incluindo:
 
 O arquivo `app.py` fornece uma interface de chat conectada ao agente no watsonx Orchestrate.
 
-### Requisitos adicionais
+### 1. Instalar dependências
 
-```bash
-pip install streamlit
+```powershell
+pip install ibm-watsonx-orchestrate streamlit python-dotenv
 ```
 
-### Executar
+### 2. Configurar credenciais
 
-```bash
-cd "Agente de Conformidade de Compra VF"
-streamlit run app.py
+Copie o arquivo de exemplo e preencha com suas credenciais:
+
+```powershell
+Copy-Item .env.example .env
+notepad .env
 ```
+
+Conteúdo do `.env`:
+
+```
+ORCHESTRATE_URL=https://api.eu-de.watson-orchestrate.cloud.ibm.com/instances/<seu-instance-id>
+ORCHESTRATE_API_KEY=<sua-ibm-cloud-api-key>
+```
+
+> A API Key é gerada em: https://cloud.ibm.com/iam/apikeys
+> O Instance ID está no CRN da instância (último UUID antes de `::`)
+
+### 3. Adicionar e ativar o ambiente WXO
+
+Só precisa fazer uma vez:
+
+```powershell
+orchestrate env add --name cloud --url "https://api.eu-de.watson-orchestrate.cloud.ibm.com/instances/<seu-instance-id>" --type ibm_iam --activate
+```
+
+> Se o CLI `orchestrate` não for reconhecido, adicione ao PATH:
+> ```powershell
+> $env:PATH += ";$env:APPDATA\Python\Python314\Scripts"
+> ```
+
+### 4. Importar agente (se ainda não existir no ambiente)
+
+```powershell
+orchestrate knowledge-bases import -f knowledge_base/conformidade_vf_kb.yaml
+orchestrate tools import -k python -f tools/conformidade_vf_tools.py
+orchestrate agents import -f agente_conformidade_VF.yaml
+```
+
+Para verificar se já existe antes de importar:
+
+```powershell
+orchestrate agents list
+```
+
+### 5. Executar o Streamlit
+
+```powershell
+cd "C:\...\Agente de Conformidade de Compra VF"
+python -m streamlit run app.py
+```
+
+Acesse em: **http://localhost:8501**
 
 ### Funcionalidades
 
