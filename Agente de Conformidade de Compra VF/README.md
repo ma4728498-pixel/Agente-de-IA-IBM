@@ -87,19 +87,19 @@ notepad .env
 Conteúdo do `.env`:
 
 ```
-ORCHESTRATE_URL=https://api.eu-de.watson-orchestrate.cloud.ibm.com/instances/<seu-instance-id>
+ORCHESTRATE_URL=https://api.eu-de.watson-orchestrate.cloud.ibm.com/instances/1091e0d5-81f5-485a-8628-6e8b821e3bdf
 ORCHESTRATE_API_KEY=<sua-ibm-cloud-api-key>
 ```
 
 > A API Key é gerada em: https://cloud.ibm.com/iam/apikeys
-> O Instance ID está no CRN da instância (último UUID antes de `::`)
+> CRN da instância: `crn:v1:bluemix:public:watsonx-orchestrate:eu-de:a/72666b3953204b45a29eb70b2179106e:1091e0d5-81f5-485a-8628-6e8b821e3bdf::`
 
 ### 3. Adicionar e ativar o ambiente WXO
 
 Só precisa fazer uma vez:
 
 ```powershell
-orchestrate env add --name cloud --url "https://api.eu-de.watson-orchestrate.cloud.ibm.com/instances/<seu-instance-id>" --type ibm_iam --activate
+orchestrate env add --name cloud --url "https://api.eu-de.watson-orchestrate.cloud.ibm.com/instances/1091e0d5-81f5-485a-8628-6e8b821e3bdf" --type ibm_iam --activate
 ```
 
 > Se o CLI `orchestrate` não for reconhecido, adicione ao PATH:
