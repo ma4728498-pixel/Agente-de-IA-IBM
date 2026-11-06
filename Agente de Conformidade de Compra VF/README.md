@@ -2,7 +2,7 @@
 
 Agente nativo do IBM watsonx Orchestrate especializado em **verificação de conformidade
 de transações de compras**. Opera com knowledge base (RAG) para obter o histórico das
-empresas e os contatos aprovadores.
+empresas e os contatos aprovadores. Inclui interface web (Streamlit) para interação via chat.
 
 ## Responsabilidades
 
@@ -22,21 +22,22 @@ automaticamente para os **2 contatos responsáveis** cadastrados na knowledge ba
 ## Estrutura do Projeto
 
 ```
-agente_conformidade_VF/
-├── agente_conformidade_VF.yaml          # Spec do agente nativo (WXO)
-├── README.md                            # Este arquivo
-├── requirements.txt                     # Dependências Python
-├── workspace_config.yaml                # Configuração de pastas do workspace WXO
-├── prompt_sistema.md                    # Documentação do prompt/instruções do agente
-├── exemplo_saida.md                     # Exemplo real de saída do agente
+Agente de Conformidade de Compra VF/
+├── app.py                           # Interface web Streamlit (frontend)
+├── agente_conformidade_VF.yaml      # Spec do agente nativo (WXO)
+├── README.md                        # Este arquivo
+├── requirements.txt                 # Dependências Python
+├── workspace_config.yaml            # Configuração de pastas do workspace WXO
+├── prompt_sistema.md                # Documentação do prompt/instruções do agente
+├── exemplo_saida.md                 # Exemplo real de saída do agente
 ├── tools/
-│   └── conformidade_vf_tools.py         # 2 ferramentas Python do agente
+│   └── conformidade_vf_tools.py     # 2 ferramentas Python do agente
 ├── knowledge_base/
-│   ├── conformidade_vf_kb.yaml          # Spec da knowledge base
+│   ├── conformidade_vf_kb.yaml      # Spec da knowledge base
 │   └── docs/
-│       └── empresas_corporativas.json   # Histórico + contatos das 8 empresas
+│       └── empresas_corporativas.json  # Histórico + contatos das 8 empresas
 └── tests/
-    └── test_conformidade_vf.py          # 30 testes unitários (100% pass)
+    └── test_conformidade_vf.py      # 30 testes unitários (100% pass)
 ```
 
 ---
@@ -64,7 +65,34 @@ com o histórico mensal de 8 empresas (Mai–Out/2026), incluindo:
 
 ---
 
-## Deploy
+## Interface Web (Streamlit)
+
+O arquivo `app.py` fornece uma interface de chat conectada ao agente no watsonx Orchestrate.
+
+### Requisitos adicionais
+
+```bash
+pip install streamlit
+```
+
+### Executar
+
+```bash
+cd "Agente de Conformidade de Compra VF"
+streamlit run app.py
+```
+
+### Funcionalidades
+
+- Chat com o agente `agente_conformidade_VF` via IBM watsonx Orchestrate SDK
+- Botões de atalho para ações comuns (verificar todas as empresas, checar fornecedores, localizações e valores)
+- Visualização da knowledge base (empresas cadastradas)
+- Exibição opcional da trilha de raciocínio do agente (Reasoning)
+- Controle de sessão (thread_id) para conversas com contexto
+
+---
+
+## Deploy (WXO)
 
 ```bash
 # 1. Ativar o ambiente WXO
