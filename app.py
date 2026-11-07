@@ -21,18 +21,31 @@ ORCHESTRATE_API_KEY = _get_secret("ORCHESTRATE_API_KEY")
 
 def _setup_orchestrate_config():
     """
-    Gera o config.yaml do SDK WXO em tempo de execução a partir das secrets.
-    Necessário no Streamlit Cloud onde não há 'orchestrate env activate'.
+    Gera config.yaml + credentials.yaml do SDK WXO em tempo de execução.
+    Obtém um token JWT IBM IAM a partir da API key e o armazena no formato
+    exato que o SDK espera — substituindo o 'orchestrate env activate'.
     """
     if not ORCHESTRATE_URL or not ORCHESTRATE_API_KEY:
         return
 
-    config_dir  = pathlib.Path.home() / ".config" / "orchestrate"
-    config_file = config_dir / "config.yaml"
-    auth_file   = config_dir / "auth.yaml"
-    config_dir.mkdir(parents=True, exist_ok=True)
+    # Gera token IAM a partir da API key
+    try:
+        from ibm_cloud_sdk_core import IAMTokenManager
+        import time
+        tm = IAMTokenManager(apikey=ORCHESTRATE_API_KEY)
+        token_response = tm.request_token()
+        token = token_response.get_result().get("access_token", "")
+        expiry = token_response.get_result().get("expiration", int(time.time()) + 3600)
+    except Exception as e:
+        token = ""
+        expiry = 0
 
-    # Escreve config.yaml com o ambiente 'cloud' ativo
+    config_dir = pathlib.Path.home() / ".config" / "orchestrate"
+    cache_dir  = pathlib.Path.home() / ".cache"  / "orchestrate"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    cache_dir.mkdir(parents=True, exist_ok=True)
+
+    # config.yaml — ambiente e URL
     config_yaml = f"""cached_user_env: {{}}
 context:
   active_environment: cloud
@@ -46,16 +59,16 @@ python_registry:
   test_package_version_override: null
   type: pypi
 """
-    config_file.write_text(config_yaml, encoding="utf-8")
+    (config_dir / "config.yaml").write_text(config_yaml, encoding="utf-8")
 
-    # Escreve auth.yaml com a API key
-    auth_yaml = f"""auth:
+    # credentials.yaml — token JWT no formato exato que o SDK lê
+    creds_yaml = f"""auth:
   cloud:
-    apikey: {ORCHESTRATE_API_KEY}
-    auth_type: ibm_iam
-    wxo_url: {ORCHESTRATE_URL}
+    wxo_mcsp_token: {token}
+    wxo_mcsp_token_expiry: {expiry}
+  local: null
 """
-    auth_file.write_text(auth_yaml, encoding="utf-8")
+    (cache_dir / "credentials.yaml").write_text(creds_yaml, encoding="utf-8")
 
 _setup_orchestrate_config()
 
