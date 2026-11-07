@@ -76,26 +76,27 @@ st.markdown("""
 # RENDERIZAÇÃO ENRIQUECIDA DA RESPOSTA
 # ==========================================
 
-def _limpar(texto: str) -> str:
-    """Remove marcadores markdown (**)  que o agente às vezes inclui no texto."""
+def _md(texto: str) -> str:
+    """Remove marcadores markdown ** e * mantendo o texto limpo."""
     return re.sub(r'\*+', '', texto).strip()
 
 
 def _html_bloco(bloco: str) -> str:
-    """Converte um bloco de conformidade em HTML."""
+    """Converte um bloco de conformidade (formato markdown do agente) em HTML visual."""
 
-    status_match = re.search(r'STATUS DE CONFORMIDADE:\s*(.+)', bloco)
+    # STATUS — aceita com ou sem ** ao redor
+    status_match = re.search(r'\*{0,2}STATUS DE CONFORMIDADE:\*{0,2}\s*\*{0,2}(.+?)\*{0,2}\s*$', bloco, re.MULTILINE)
     if not status_match:
-        return ""  # bloco sem status — ignora
-    status = _limpar(status_match.group(1))
-    requer = "Requer Aprovação" in status
+        return ""
+    status = _md(status_match.group(1))
+    requer = "Requer" in status
     card_class = "aprovacao" if requer else "ok"
     status_emoji = "🔴" if requer else "🟢"
 
-    empresa_match = re.search(r'EMPRESA:\s*(.+)', bloco)
-    pedido_match  = re.search(r'PEDIDO/REFERÊNCIA:\s*(.+)', bloco)
-    empresa = _limpar(empresa_match.group(1)) if empresa_match else ""
-    pedido  = _limpar(pedido_match.group(1))  if pedido_match  else ""
+    empresa_match = re.search(r'\*{0,2}EMPRESA:\*{0,2}\s*\*{0,2}(.+?)\*{0,2}\s*$', bloco, re.MULTILINE)
+    pedido_match  = re.search(r'\*{0,2}PEDIDO/REFERÊNCIA:\*{0,2}\s*\*{0,2}(.+?)\*{0,2}\s*$', bloco, re.MULTILINE)
+    empresa = _md(empresa_match.group(1)) if empresa_match else ""
+    pedido  = _md(pedido_match.group(1))  if pedido_match  else ""
 
     html = (
         f'<div class="conformidade-card {card_class}">'
@@ -105,15 +106,14 @@ def _html_bloco(bloco: str) -> str:
         f'</div>'
     )
 
-    # CRITÉRIOS
+    # CRITÉRIOS — linhas com SIM ou NÃO
     criterios_match = re.search(
-        r'CRITÉRIOS VERIFICADOS:(.*?)(?=CONTATOS ACIONADOS|MODELOS DE E-MAIL|$)',
+        r'\*{0,2}CRITÉRIOS VERIFICADOS:\*{0,2}(.*?)(?=\*{0,2}CONTATOS ACIONADOS|\*{0,2}MODELOS DE E-MAIL|────|$)',
         bloco, re.DOTALL
     )
     if criterios_match:
-        # Filtra apenas linhas que contenham SIM ou NÃO (linhas de critério reais)
         linhas = [
-            _limpar(l.strip().lstrip("•").strip())
+            _md(l.strip().lstrip("•-").strip())
             for l in criterios_match.group(1).splitlines()
             if re.search(r'\bSIM\b|\bNÃO\b', l, re.IGNORECASE)
         ]
@@ -121,31 +121,37 @@ def _html_bloco(bloco: str) -> str:
             items = ""
             for linha in linhas:
                 icone = "❌" if re.search(r'\bSIM\b', linha, re.IGNORECASE) else "✅"
-                items += f'<li style="margin-bottom:3px">{icone} {linha}</li>'
+                items += f'<li style="margin-bottom:4px">{icone} {linha}</li>'
             html += (
                 f'<p style="margin:0.8rem 0 0.3rem"><strong>Critérios verificados:</strong></p>'
-                f'<ul style="margin:0;padding-left:1.2rem;line-height:1.7">{items}</ul>'
+                f'<ul style="margin:0;padding-left:1.2rem;line-height:1.8">{items}</ul>'
             )
 
-    # CONTATOS
+    # CONTATOS — formato markdown: "- **Contato 1:** Nome (**Cargo**)"
     contatos_match = re.search(
-        r'CONTATOS ACIONADOS PARA APROVAÇÃO:(.*?)(?=─|MODELOS DE E-MAIL|$)',
+        r'\*{0,2}CONTATOS ACIONADOS PARA APROVAÇÃO:\*{0,2}(.*?)(?=────|\*{0,2}MODELOS DE E-MAIL|$)',
         bloco, re.DOTALL
     )
     if contatos_match:
+        bloco_contatos = contatos_match.group(1)
+        # Captura: nome, cargo, email (com hífen especial ‑ ou normal -), tel, status
         contatos = re.findall(
-            r'Contato \d+:\s*(.+?)\n.*?E-mail:\s*(\S+)\s*\|\s*Tel:\s*(.+?)\n.*?Status:\s*(.+)',
-            contatos_match.group(1)
+            r'Contato \d+[:\*\s]+([^\n\(]+)\(([^\)]+)\)[^\n]*\n'
+            r'[^\n]*E[\-‑]mail:\s*(\S+)\s*\|\s*Tel:\s*([^\n]+)\n'
+            r'[^\n]*Status:\s*([^\n]+)',
+            bloco_contatos
         )
         if contatos:
             cards = ""
-            for nome, email, tel, status_c in contatos:
+            for nome, cargo, email, tel, status_c in contatos:
+                email_clean = re.sub(r'\*+', '', email).strip()
                 cards += (
                     f'<div class="contato-card">'
-                    f'👤 <strong>{_limpar(nome)}</strong><br>'
-                    f'📧 <a href="mailto:{email.strip()}">{email.strip()}</a><br>'
-                    f'📞 {tel.strip()}<br>'
-                    f'<span style="color:#6f6f6f;font-size:0.85rem">⏳ {_limpar(status_c)}</span>'
+                    f'👤 <strong>{_md(nome)}</strong>'
+                    f'<span style="color:#6f6f6f;font-size:0.85rem"> ({_md(cargo)})</span><br>'
+                    f'📧 <a href="mailto:{email_clean}">{email_clean}</a><br>'
+                    f'📞 {_md(tel)}<br>'
+                    f'<span style="color:#6f6f6f;font-size:0.85rem">⏳ {_md(status_c)}</span>'
                     f'</div>'
                 )
             html += (
@@ -153,19 +159,32 @@ def _html_bloco(bloco: str) -> str:
                 f'<div style="display:flex;gap:0.8rem;flex-wrap:wrap">{cards}</div>'
             )
 
-    # E-MAILS colapsáveis via <details>
-    email_blocos = re.findall(r'┌─+.*?└─+┘', bloco, re.DOTALL)
-    if email_blocos:
-        inner = ""
-        for eb in email_blocos:
-            safe = eb.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-            inner += f'<pre style="background:#f4f4f4;padding:0.7rem;border-radius:4px;font-size:0.8rem;white-space:pre-wrap">{safe}</pre>'
-        html += (
-            f'<details style="margin-top:0.8rem">'
-            f'<summary style="cursor:pointer;font-weight:600">📧 Ver modelos de e-mail para envio</summary>'
-            f'<div style="margin-top:0.5rem">{inner}</div>'
-            f'</details>'
-        )
+    # E-MAILS — tudo após "MODELOS DE E-MAIL" em um <details>
+    emails_match = re.search(
+        r'(?:────+[^\n]*\n)?\*{0,2}MODELOS DE E[\-‑]MAIL[^\n]*\*{0,2}\n(?:────+[^\n]*\n)?(.*)',
+        bloco, re.DOTALL
+    )
+    if emails_match:
+        conteudo_email = emails_match.group(1).strip()
+        # Remove linhas que são apenas referências à ferramenta (não conteúdo real)
+        eh_referencia = bool(re.search(r'Veja o conteúdo|resposta da ferramenta|enviar_solicitacao', conteudo_email))
+        if conteudo_email and not eh_referencia:
+            safe = (conteudo_email
+                    .replace("&", "&amp;")
+                    .replace("<", "&lt;")
+                    .replace(">", "&gt;"))
+            html += (
+                f'<details style="margin-top:0.8rem">'
+                f'<summary style="cursor:pointer;font-weight:600">📧 Ver modelos de e-mail para envio</summary>'
+                f'<pre style="margin-top:0.5rem;background:#f4f4f4;padding:0.8rem;border-radius:4px;'
+                f'font-size:0.82rem;white-space:pre-wrap;line-height:1.5">{safe}</pre>'
+                f'</details>'
+            )
+        elif requer:
+            html += (
+                f'<p style="margin-top:0.8rem;color:#6f6f6f;font-size:0.9rem">'
+                f'📧 E-mails de aprovação gerados e enviados aos contatos acima.</p>'
+            )
 
     return html
 
@@ -180,11 +199,11 @@ def render_resposta(texto: str):
         return
 
     # Texto introdutório antes do primeiro bloco
-    partes = re.split(r'(?=STATUS DE CONFORMIDADE:)', texto, maxsplit=1)
+    partes = re.split(r'(?=\*{0,2}STATUS DE CONFORMIDADE:)', texto, maxsplit=1)
     if len(partes) > 1 and partes[0].strip():
         st.markdown(partes[0].strip())
 
-    blocos = [b.strip() for b in re.split(r'(?=STATUS DE CONFORMIDADE:)', texto) if b.strip()]
+    blocos = [b.strip() for b in re.split(r'(?=\*{0,2}STATUS DE CONFORMIDADE:)', texto) if b.strip()]
     blocos_html = [_html_bloco(b) for b in blocos]
     html_total = "<hr style='margin:1rem 0'>".join(h for h in blocos_html if h)
     if html_total:
