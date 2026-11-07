@@ -28,47 +28,44 @@ def _setup_orchestrate_config():
     if not ORCHESTRATE_URL or not ORCHESTRATE_API_KEY:
         return
 
+    import time
+    import yaml as _yaml
+
     # Gera token IAM a partir da API key
+    token, expiry = "", int(time.time()) + 3600
     try:
         from ibm_cloud_sdk_core import IAMTokenManager
-        import time
         tm = IAMTokenManager(apikey=ORCHESTRATE_API_KEY)
-        token_response = tm.request_token()
-        token = token_response.get_result().get("access_token", "")
-        expiry = token_response.get_result().get("expiration", int(time.time()) + 3600)
-    except Exception as e:
-        token = ""
-        expiry = 0
+        resp = tm.request_token()
+        token  = resp.get("access_token", "")
+        expiry = resp.get("expiration", expiry)
+    except Exception:
+        pass
 
     config_dir = pathlib.Path.home() / ".config" / "orchestrate"
     cache_dir  = pathlib.Path.home() / ".cache"  / "orchestrate"
     config_dir.mkdir(parents=True, exist_ok=True)
     cache_dir.mkdir(parents=True, exist_ok=True)
 
-    # config.yaml — ambiente e URL
-    config_yaml = f"""cached_user_env: {{}}
-context:
-  active_environment: cloud
-  active_workspace: Global workspace
-environments:
-  cloud:
-    auth_type: ibm_iam
-    wxo_url: {ORCHESTRATE_URL}
-python_registry:
-  skip_version_check: false
-  test_package_version_override: null
-  type: pypi
-"""
-    (config_dir / "config.yaml").write_text(config_yaml, encoding="utf-8")
+    # config.yaml — usar yaml.dump para evitar problemas de formatação
+    config_data = {
+        "cached_user_env": {},
+        "context": {"active_environment": "cloud", "active_workspace": "Global workspace"},
+        "environments": {"cloud": {"auth_type": "ibm_iam", "wxo_url": ORCHESTRATE_URL}},
+        "python_registry": {"skip_version_check": False, "test_package_version_override": None, "type": "pypi"},
+    }
+    with open(config_dir / "config.yaml", "w", encoding="utf-8") as f:
+        _yaml.dump(config_data, f, allow_unicode=True, default_flow_style=False, width=100000)
 
-    # credentials.yaml — token JWT no formato exato que o SDK lê
-    creds_yaml = f"""auth:
-  cloud:
-    wxo_mcsp_token: {token}
-    wxo_mcsp_token_expiry: {expiry}
-  local: null
-"""
-    (cache_dir / "credentials.yaml").write_text(creds_yaml, encoding="utf-8")
+    # credentials.yaml — token JWT; width=100000 evita quebra de linha no token longo
+    creds_data = {
+        "auth": {
+            "cloud": {"wxo_mcsp_token": token, "wxo_mcsp_token_expiry": expiry},
+            "local": None,
+        }
+    }
+    with open(cache_dir / "credentials.yaml", "w", encoding="utf-8") as f:
+        _yaml.dump(creds_data, f, allow_unicode=True, default_flow_style=False, width=100000)
 
 _setup_orchestrate_config()
 
