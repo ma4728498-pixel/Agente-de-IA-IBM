@@ -47,11 +47,14 @@ def _setup_orchestrate_config():
     config_dir.mkdir(parents=True, exist_ok=True)
     cache_dir.mkdir(parents=True, exist_ok=True)
 
-    # config.yaml — usar yaml.dump para evitar problemas de formatação
+    # config.yaml — inclui 'local' (PROTECTED_ENV_NAME exigido pelo SDK) + 'cloud' ativo
     config_data = {
         "cached_user_env": {},
         "context": {"active_environment": "cloud", "active_workspace": "Global workspace"},
-        "environments": {"cloud": {"auth_type": "ibm_iam", "wxo_url": ORCHESTRATE_URL}},
+        "environments": {
+            "local": {"wxo_url": "http://localhost:4321"},
+            "cloud": {"auth_type": "ibm_iam", "wxo_url": ORCHESTRATE_URL},
+        },
         "python_registry": {"skip_version_check": False, "test_package_version_override": None, "type": "pypi"},
     }
     with open(config_dir / "config.yaml", "w", encoding="utf-8") as f:
