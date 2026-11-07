@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import json
 import streamlit as st
@@ -42,6 +43,28 @@ st.markdown("""
         color: #0e6027;
         margin-bottom: 1rem;
     }
+    .conformidade-card {
+        background: #f4f4f4;
+        border-left: 4px solid #0f62fe;
+        border-radius: 6px;
+        padding: 1rem 1.2rem;
+        margin-bottom: 1rem;
+    }
+    .conformidade-card.aprovacao {
+        border-left-color: #da1e28;
+        background: #fff1f1;
+    }
+    .conformidade-card.ok {
+        border-left-color: #198038;
+        background: #defbe6;
+    }
+    .contato-card {
+        background: #ffffff;
+        border: 1px solid #e0e0e0;
+        border-radius: 6px;
+        padding: 0.7rem 1rem;
+        margin-bottom: 0.5rem;
+    }
     .stChatMessage {
         border-radius: 10px;
     }
@@ -49,7 +72,129 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-# Funções de interação com o watsonx Orchestrate
+# ==========================================
+# RENDERIZAÇÃO ENRIQUECIDA DA RESPOSTA
+# ==========================================
+
+def _limpar(texto: str) -> str:
+    """Remove marcadores markdown (**)  que o agente às vezes inclui no texto."""
+    return re.sub(r'\*+', '', texto).strip()
+
+
+def _html_bloco(bloco: str) -> str:
+    """Converte um bloco de conformidade em HTML."""
+
+    status_match = re.search(r'STATUS DE CONFORMIDADE:\s*(.+)', bloco)
+    if not status_match:
+        return ""  # bloco sem status — ignora
+    status = _limpar(status_match.group(1))
+    requer = "Requer Aprovação" in status
+    card_class = "aprovacao" if requer else "ok"
+    status_emoji = "🔴" if requer else "🟢"
+
+    empresa_match = re.search(r'EMPRESA:\s*(.+)', bloco)
+    pedido_match  = re.search(r'PEDIDO/REFERÊNCIA:\s*(.+)', bloco)
+    empresa = _limpar(empresa_match.group(1)) if empresa_match else ""
+    pedido  = _limpar(pedido_match.group(1))  if pedido_match  else ""
+
+    html = (
+        f'<div class="conformidade-card {card_class}">'
+        f'<strong>{status_emoji} {status}</strong><br>'
+        f'<span style="font-size:1.05rem"><strong>{empresa}</strong></span>'
+        f'{"&nbsp;&nbsp;—&nbsp;&nbsp;" + pedido if pedido else ""}'
+        f'</div>'
+    )
+
+    # CRITÉRIOS
+    criterios_match = re.search(
+        r'CRITÉRIOS VERIFICADOS:(.*?)(?=CONTATOS ACIONADOS|MODELOS DE E-MAIL|$)',
+        bloco, re.DOTALL
+    )
+    if criterios_match:
+        # Filtra apenas linhas que contenham SIM ou NÃO (linhas de critério reais)
+        linhas = [
+            _limpar(l.strip().lstrip("•").strip())
+            for l in criterios_match.group(1).splitlines()
+            if re.search(r'\bSIM\b|\bNÃO\b', l, re.IGNORECASE)
+        ]
+        if linhas:
+            items = ""
+            for linha in linhas:
+                icone = "❌" if re.search(r'\bSIM\b', linha, re.IGNORECASE) else "✅"
+                items += f'<li style="margin-bottom:3px">{icone} {linha}</li>'
+            html += (
+                f'<p style="margin:0.8rem 0 0.3rem"><strong>Critérios verificados:</strong></p>'
+                f'<ul style="margin:0;padding-left:1.2rem;line-height:1.7">{items}</ul>'
+            )
+
+    # CONTATOS
+    contatos_match = re.search(
+        r'CONTATOS ACIONADOS PARA APROVAÇÃO:(.*?)(?=─|MODELOS DE E-MAIL|$)',
+        bloco, re.DOTALL
+    )
+    if contatos_match:
+        contatos = re.findall(
+            r'Contato \d+:\s*(.+?)\n.*?E-mail:\s*(\S+)\s*\|\s*Tel:\s*(.+?)\n.*?Status:\s*(.+)',
+            contatos_match.group(1)
+        )
+        if contatos:
+            cards = ""
+            for nome, email, tel, status_c in contatos:
+                cards += (
+                    f'<div class="contato-card">'
+                    f'👤 <strong>{_limpar(nome)}</strong><br>'
+                    f'📧 <a href="mailto:{email.strip()}">{email.strip()}</a><br>'
+                    f'📞 {tel.strip()}<br>'
+                    f'<span style="color:#6f6f6f;font-size:0.85rem">⏳ {_limpar(status_c)}</span>'
+                    f'</div>'
+                )
+            html += (
+                f'<p style="margin:0.8rem 0 0.3rem"><strong>Contatos acionados:</strong></p>'
+                f'<div style="display:flex;gap:0.8rem;flex-wrap:wrap">{cards}</div>'
+            )
+
+    # E-MAILS colapsáveis via <details>
+    email_blocos = re.findall(r'┌─+.*?└─+┘', bloco, re.DOTALL)
+    if email_blocos:
+        inner = ""
+        for eb in email_blocos:
+            safe = eb.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            inner += f'<pre style="background:#f4f4f4;padding:0.7rem;border-radius:4px;font-size:0.8rem;white-space:pre-wrap">{safe}</pre>'
+        html += (
+            f'<details style="margin-top:0.8rem">'
+            f'<summary style="cursor:pointer;font-weight:600">📧 Ver modelos de e-mail para envio</summary>'
+            f'<div style="margin-top:0.5rem">{inner}</div>'
+            f'</details>'
+        )
+
+    return html
+
+
+def render_resposta(texto: str):
+    """Renderiza a resposta completa do agente."""
+    if not texto:
+        return
+
+    if "STATUS DE CONFORMIDADE:" not in texto:
+        st.markdown(texto)
+        return
+
+    # Texto introdutório antes do primeiro bloco
+    partes = re.split(r'(?=STATUS DE CONFORMIDADE:)', texto, maxsplit=1)
+    if len(partes) > 1 and partes[0].strip():
+        st.markdown(partes[0].strip())
+
+    blocos = [b.strip() for b in re.split(r'(?=STATUS DE CONFORMIDADE:)', texto) if b.strip()]
+    blocos_html = [_html_bloco(b) for b in blocos]
+    html_total = "<hr style='margin:1rem 0'>".join(h for h in blocos_html if h)
+    if html_total:
+        st.markdown(html_total, unsafe_allow_html=True)
+
+
+# ==========================================
+# FUNÇÕES DE INTERAÇÃO COM WATSONX ORCHESTRATE
+# ==========================================
+
 @st.cache_resource
 def get_orchestrate_clients():
     try:
@@ -98,7 +243,10 @@ def enviar_mensagem(prompt: str, include_reasoning: bool = False):
         return None, None, str(e)
 
 
-# Inicialização do Histórico de Conversa
+# ==========================================
+# INICIALIZAÇÃO DO ESTADO
+# ==========================================
+
 if "messages" not in st.session_state:
     st.session_state["messages"] = [
         {
@@ -190,23 +338,24 @@ st.markdown(
 # Exibe o histórico de mensagens
 for msg in st.session_state["messages"]:
     with st.chat_message(msg["role"]):
-        st.markdown(msg["content"])
+        if msg["role"] == "assistant":
+            render_resposta(msg["content"])
+        else:
+            st.markdown(msg["content"])
         if "reasoning" in msg and msg["reasoning"]:
             with st.expander("🧠 Ver Trilha de Raciocínio"):
                 st.json(msg["reasoning"])
 
-# Processamento de entrada (seja pelo input de texto ou por um botão de atalho)
+# Processamento de entrada
 prompt_usuario = st.chat_input("Digite uma instrução para o agente (ex: Verificar Outubro/2026 da EMP-007)...")
 if atalho_selecionado:
     prompt_usuario = atalho_selecionado
 
 if prompt_usuario:
-    # 1. Adiciona a mensagem do usuário ao histórico e exibe
     st.session_state["messages"].append({"role": "user", "content": prompt_usuario})
     with st.chat_message("user"):
         st.markdown(prompt_usuario)
 
-    # 2. Executa a chamada para o agente com indicador visual de progresso
     with st.chat_message("assistant"):
         with st.spinner("🤖 Consultando a base de conhecimento e verificando conformidade..."):
             resposta, reasoning, erro = enviar_mensagem(prompt_usuario, include_reasoning=show_reasoning)
@@ -216,7 +365,7 @@ if prompt_usuario:
                 st.error(texto_resposta)
                 st.session_state["messages"].append({"role": "assistant", "content": texto_resposta})
             else:
-                st.markdown(resposta)
+                render_resposta(resposta)
                 if show_reasoning and reasoning:
                     with st.expander("🧠 Ver Trilha de Raciocínio"):
                         st.json(reasoning)
