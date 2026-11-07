@@ -5,11 +5,28 @@ import json
 import streamlit as st
 from dotenv import load_dotenv
 
-# Carrega variáveis do arquivo .env (ORCHESTRATE_URL, ORCHESTRATE_API_KEY)
+# Carrega credenciais: prioridade st.secrets (Streamlit Cloud) > .env (local)
 load_dotenv()
 
+def _get_secret(key: str) -> str:
+    """Lê credencial do st.secrets (Streamlit Cloud) ou do ambiente (local/.env)."""
+    try:
+        return st.secrets[key]
+    except Exception:
+        return os.environ.get(key, "")
+
+ORCHESTRATE_URL     = _get_secret("ORCHESTRATE_URL")
+ORCHESTRATE_API_KEY = _get_secret("ORCHESTRATE_API_KEY")
+
+# Injeta no ambiente para que o SDK do WXO as encontre
+if ORCHESTRATE_URL:
+    os.environ["ORCHESTRATE_URL"] = ORCHESTRATE_URL
+if ORCHESTRATE_API_KEY:
+    os.environ["ORCHESTRATE_API_KEY"] = ORCHESTRATE_API_KEY
+
 # Garante codificação UTF-8 no Windows
-sys.stdout.reconfigure(encoding="utf-8")
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
 
 # Configuração da Página
 st.set_page_config(
