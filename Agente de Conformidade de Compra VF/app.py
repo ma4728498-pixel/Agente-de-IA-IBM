@@ -306,8 +306,25 @@ if "thread_id" not in st.session_state:
 # BARRA LATERAL (SIDEBAR)
 # ==========================================
 with st.sidebar:
-    st.title("🛡️ Painel de Controle")
+    st.markdown("""
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:0.5rem">
+        <svg width="28" height="11" viewBox="0 0 40 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="4" height="16" fill="#0f62fe"/><rect x="6" y="4" width="4" height="8" fill="#0f62fe"/>
+            <rect x="12" y="0" width="4" height="16" fill="#0f62fe"/><rect x="18" y="4" width="4" height="8" fill="#0f62fe"/>
+            <rect x="24" y="0" width="4" height="16" fill="#0f62fe"/><rect x="30" y="4" width="4" height="8" fill="#0f62fe"/>
+            <rect x="36" y="0" width="4" height="16" fill="#0f62fe"/>
+        </svg>
+        <span style="font-weight:700;font-size:1.1rem">Painel de Controle</span>
+    </div>
+    """, unsafe_allow_html=True)
     st.markdown('<div class="badge-status">● Agente Conectado (IBM WXO)</div>', unsafe_allow_html=True)
+    st.markdown("""
+    <div style="font-size:0.75rem;color:#6f6f6f;margin-bottom:0.5rem">
+        Powered by <strong>IBM watsonx Orchestrate</strong><br>
+        LLM: <strong>IBM Granite</strong> · RAG: <strong>watsonx KB</strong><br>
+        Desenvolvido com <strong>IBM Bob</strong>
+    </div>
+    """, unsafe_allow_html=True)
 
     st.markdown("### ⚙️ Opções")
     show_reasoning = st.checkbox("Exibir trilha de raciocínio (Reasoning)", value=False)
@@ -365,11 +382,32 @@ with st.sidebar:
 # ==========================================
 # ÁREA PRINCIPAL DE CHAT
 # ==========================================
-st.markdown('<div class="main-header">🛡️ Agente de Conformidade de Compras VF</div>', unsafe_allow_html=True)
-st.markdown(
-    '<div class="sub-header">Verificação automática de conformidade integrada ao IBM watsonx Orchestrate</div>',
-    unsafe_allow_html=True
-)
+
+# Cabeçalho com logos IBM
+st.markdown("""
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem">
+    <div>
+        <div class="main-header">🛡️ Agente de Conformidade de Compras</div>
+        <div class="sub-header">Verificação automática de conformidade integrada ao IBM watsonx Orchestrate</div>
+    </div>
+    <div style="text-align:right;line-height:1.4">
+        <div style="display:flex;align-items:center;gap:8px;justify-content:flex-end;margin-bottom:4px">
+            <svg width="40" height="16" viewBox="0 0 40 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect width="4" height="16" fill="#0f62fe"/>
+                <rect x="6" y="4" width="4" height="8" fill="#0f62fe"/>
+                <rect x="12" y="0" width="4" height="16" fill="#0f62fe"/>
+                <rect x="18" y="4" width="4" height="8" fill="#0f62fe"/>
+                <rect x="24" y="0" width="4" height="16" fill="#0f62fe"/>
+                <rect x="30" y="4" width="4" height="8" fill="#0f62fe"/>
+                <rect x="36" y="0" width="4" height="16" fill="#0f62fe"/>
+            </svg>
+            <span style="font-weight:700;color:#0f62fe;font-size:1.1rem">IBM</span>
+        </div>
+        <span style="font-size:0.75rem;color:#6f6f6f">watsonx Orchestrate · Granite · IBM Bob</span>
+    </div>
+</div>
+<hr style="margin:0 0 1rem 0;border-color:#e0e0e0">
+""", unsafe_allow_html=True)
 
 # Exibe o histórico de mensagens
 for msg in st.session_state["messages"]:
@@ -411,3 +449,16 @@ if prompt_usuario:
                     "content": resposta,
                     "reasoning": reasoning if show_reasoning else None
                 })
+
+# Rodapé
+st.markdown("""
+<div style="margin-top:2rem;padding-top:1rem;border-top:1px solid #e0e0e0;
+            text-align:center;font-size:0.78rem;color:#6f6f6f">
+    Desenvolvido com
+    <strong style="color:#0f62fe">IBM Bob</strong> ·
+    <strong>IBM watsonx Orchestrate</strong> ·
+    <strong>IBM Granite</strong> ·
+    <strong>Streamlit</strong>
+    <br>IBM SkillsBuild AI Experiential Learning Lab for Brazil
+</div>
+""", unsafe_allow_html=True)

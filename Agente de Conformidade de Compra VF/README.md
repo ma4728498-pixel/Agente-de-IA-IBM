@@ -1,8 +1,42 @@
 # Agente de Conformidade de Compras — VF (Versão Final)
 
+> **IBM SkillsBuild AI Experiential Learning Lab for Brazil**
+> Desenvolvido com IBM Bob · IBM watsonx Orchestrate · IBM Granite · Streamlit
+
 Agente nativo do IBM watsonx Orchestrate especializado em **verificação de conformidade
 de transações de compras**. Opera com knowledge base (RAG) para obter o histórico das
 empresas e os contatos aprovadores. Inclui interface web (Streamlit) para interação via chat.
+
+---
+
+## Impacto de Negócio
+
+| Métrica | Antes (manual) | Depois (automatizado) |
+|---|---|---|
+| Tempo de auditoria mensal (8 empresas) | ~5 horas | ~5 minutos |
+| Acionamento dos aprovadores | 1–2 dias | Imediato |
+| Cobertura de transações auditadas | Parcial | 100% |
+| Escalabilidade | Linear | Constante |
+
+**Stakeholder:** Ana Paula, Analista de Conformidade de Compras — responsável por auditar mensalmente as transações de 8 empresas e acionar os aprovadores designados por empresa.
+
+---
+
+## Como o IBM Bob foi usado
+
+O IBM Bob foi o copiloto de engenharia central em todo o ciclo de desenvolvimento:
+
+| Atividade | Contribuição do IBM Bob |
+|---|---|
+| **Arquitetura** | Identificou e reorganizou dois projetos misturados no repositório, eliminou duplicatas |
+| **Frontend** | Criou integralmente o `app.py` — conexão WXO SDK, renderização HTML/CSS, secrets |
+| **Depuração** | Diagnosticou URL errada da instância WXO, PATH do CLI, bugs de unicode no parser |
+| **Segurança** | Criou `.gitignore`, `.env.example`, configurou secrets para Streamlit Cloud |
+| **Documentação** | Redigiu README, declarações do desafio, diagrama de arquitetura |
+
+> Todo o código e documentação deste repositório foi produzido em sessão colaborativa com IBM Bob.
+
+---
 
 ## Responsabilidades
 
@@ -16,6 +50,31 @@ O agente verifica exclusivamente **3 critérios de conformidade** em cada transa
 
 Se **qualquer um** dos critérios for verdadeiro, a solicitação de aprovação é enviada
 automaticamente para os **2 contatos responsáveis** cadastrados na knowledge base.
+
+---
+
+## Arquitetura da Solução
+
+```mermaid
+graph TD
+    U["👤 Usuário / Analista de Compras"]
+    APP["🖥️ Interface Web\nStreamlit · app.py\nDesenvolvida com IBM Bob"]
+    WXO["🤖 IBM watsonx Orchestrate\nagente_conformidade_VF\nLLM: IBM Granite"]
+    KB["📚 Knowledge Base RAG\nempresasCorporativas.json\n8 empresas · Mai–Out/2026"]
+    T1["🔧 verificar_conformidade_transacao\nValor · Fornecedor · Localização"]
+    T2["🔧 enviar_solicitacao_aprovacao\nE-mails para 2 aprovadores"]
+    C["✉️ Contatos Aprovadores\n2 por empresa"]
+
+    U -->|pergunta| APP
+    APP -->|SDK WXO| WXO
+    WXO -->|RAG| KB
+    WXO -->|chama| T1
+    T1 -->|divergência?| WXO
+    WXO -->|chama se requer aprovação| T2
+    T2 --> C
+    WXO -->|resposta estruturada| APP
+    APP -->|renderização visual| U
+```
 
 ---
 
