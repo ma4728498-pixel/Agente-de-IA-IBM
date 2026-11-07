@@ -2,6 +2,7 @@ import os
 import re
 import sys
 import json
+import pathlib
 import streamlit as st
 from dotenv import load_dotenv
 
@@ -18,11 +19,45 @@ def _get_secret(key: str) -> str:
 ORCHESTRATE_URL     = _get_secret("ORCHESTRATE_URL")
 ORCHESTRATE_API_KEY = _get_secret("ORCHESTRATE_API_KEY")
 
-# Injeta no ambiente para que o SDK do WXO as encontre
-if ORCHESTRATE_URL:
-    os.environ["ORCHESTRATE_URL"] = ORCHESTRATE_URL
-if ORCHESTRATE_API_KEY:
-    os.environ["ORCHESTRATE_API_KEY"] = ORCHESTRATE_API_KEY
+def _setup_orchestrate_config():
+    """
+    Gera o config.yaml do SDK WXO em tempo de execução a partir das secrets.
+    Necessário no Streamlit Cloud onde não há 'orchestrate env activate'.
+    """
+    if not ORCHESTRATE_URL or not ORCHESTRATE_API_KEY:
+        return
+
+    config_dir  = pathlib.Path.home() / ".config" / "orchestrate"
+    config_file = config_dir / "config.yaml"
+    auth_file   = config_dir / "auth.yaml"
+    config_dir.mkdir(parents=True, exist_ok=True)
+
+    # Escreve config.yaml com o ambiente 'cloud' ativo
+    config_yaml = f"""cached_user_env: {{}}
+context:
+  active_environment: cloud
+  active_workspace: Global workspace
+environments:
+  cloud:
+    auth_type: ibm_iam
+    wxo_url: {ORCHESTRATE_URL}
+python_registry:
+  skip_version_check: false
+  test_package_version_override: null
+  type: pypi
+"""
+    config_file.write_text(config_yaml, encoding="utf-8")
+
+    # Escreve auth.yaml com a API key
+    auth_yaml = f"""auth:
+  cloud:
+    apikey: {ORCHESTRATE_API_KEY}
+    auth_type: ibm_iam
+    wxo_url: {ORCHESTRATE_URL}
+"""
+    auth_file.write_text(auth_yaml, encoding="utf-8")
+
+_setup_orchestrate_config()
 
 # Garante codificação UTF-8 no Windows
 if hasattr(sys.stdout, "reconfigure"):
