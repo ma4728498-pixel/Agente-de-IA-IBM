@@ -26,7 +26,16 @@ Bob diagnosticou e corrigiu múltiplos problemas em tempo real:
 - Criou o `.env.example` como template documentado
 - Configurou o `requirements.txt` com versões fixas para deploy reproduzível
 
-### 5. Documentação
+### 5. Servidor MCP para uso como frontend conversacional
+Bob projetou e implementou o servidor MCP em `mcp/server.py`, expondo as 4 ferramentas de conformidade ao IBM Bob via protocolo MCP (stdio):
+- `listar_empresas` — descobre as empresas disponíveis na knowledge base
+- `obter_empresa` — recupera dados completos por ID ou nome
+- `verificar_conformidade` — aplica os 3 critérios automaticamente, buscando o histórico da KB internamente
+- `enviar_solicitacao_aprovacao` — gera os e-mails formais de aprovação
+
+O servidor foi registrado em `.bob/mcp.json` para que o IBM Bob possa atuar como **frontend conversacional direto** — sem necessidade da interface Streamlit — demonstrando o agente de conformidade puramente via chat com o Bob.
+
+### 6. Documentação
 Bob redigiu e atualizou o `README.md` com estrutura de projeto, instruções de deploy, seção de interface web com 5 passos detalhados, diagrama de arquitetura Mermaid e seção de testes.
 
 ---
@@ -52,5 +61,6 @@ O LLM utilizado pelo agente no IBM watsonx Orchestrate é **IBM Granite**, confi
 |---|---|
 | **Python 3.14** | Implementação das tools e lógica de conformidade |
 | **Streamlit 1.67** | Interface web conversacional |
+| **mcp[cli] 2.x** | Protocolo MCP para integração direta com IBM Bob |
 | **python-dotenv** | Gerenciamento de credenciais local |
 | **Git** | Controle de versão |
