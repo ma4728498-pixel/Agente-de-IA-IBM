@@ -8,8 +8,10 @@ Ferramentas disponíveis:
   - obter_empresa                : retorna dados completos de uma empresa pelo ID ou nome
   - verificar_conformidade       : verifica se uma transação tem não-conformidades
   - enviar_solicitacao_aprovacao : gera e-mails formais de aprovação para os aprovadores
+  - analisar_lote_csv            : ingere um arquivo CSV de transações e verifica todas de uma vez
 """
 
+import csv
 import json
 import sys
 from pathlib import Path
@@ -352,6 +354,122 @@ def enviar_solicitacao_aprovacao(
         f"{email_1}\n\n"
         f"{email_2}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Tool 5: analisar_lote_csv
+# ---------------------------------------------------------------------------
+@server.tool()
+def analisar_lote_csv(caminho_csv: str) -> str:
+    """Ingere um arquivo CSV de transações de compras e executa a verificação de
+    conformidade para cada linha automaticamente, consultando o histórico da
+    knowledge base internamente.
+
+    Formato esperado do CSV (separador vírgula, cabeçalho obrigatório):
+      empresa_id, pedido_id, valor_total, fornecedores, localizacao
+
+    O campo 'fornecedores' pode conter múltiplos valores separados por '|'.
+    Exemplo de linha:
+      EMP-001,Novembro/2026,4750.00,"Amazon Web Services (AWS)|Google Cloud",São Paulo SP
+
+    Retorna um relatório consolidado com:
+      - Resumo: total de transações, quantas aprovadas, quantas com divergências
+      - Detalhe por empresa: critérios violados, fornecedores novos, variação percentual
+      - Lista de aprovadores a acionar por empresa com divergência
+
+    Args:
+        caminho_csv: Caminho absoluto ou relativo ao arquivo CSV. Caminhos relativos
+                     são resolvidos a partir da raiz do repositório.
+    """
+    # Resolve o caminho
+    path = Path(caminho_csv)
+    if not path.is_absolute():
+        path = ROOT / caminho_csv
+    if not path.exists():
+        # Tenta também relativo ao diretório mcp/dados/
+        path_dados = ROOT / "mcp" / "dados" / caminho_csv
+        if path_dados.exists():
+            path = path_dados
+        else:
+            return json.dumps({
+                "erro": f"Arquivo não encontrado: {caminho_csv}",
+                "dica": "Use o caminho completo ou coloque o arquivo em mcp/dados/",
+            }, ensure_ascii=False, indent=2)
+
+    # Lê o CSV
+    transacoes = []
+    try:
+        with open(path, encoding="utf-8-sig") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                transacoes.append({
+                    "empresa_id": row["empresa_id"].strip(),
+                    "pedido_id": row["pedido_id"].strip(),
+                    "valor_total": float(row["valor_total"].strip()),
+                    "fornecedores": [f.strip() for f in row["fornecedores"].split("|")],
+                    "localizacao": row["localizacao"].strip(),
+                })
+    except Exception as e:
+        return json.dumps({"erro": f"Erro ao ler CSV: {e}"}, ensure_ascii=False, indent=2)
+
+    if not transacoes:
+        return json.dumps({"erro": "CSV vazio ou sem linhas de dados."}, ensure_ascii=False, indent=2)
+
+    # Verifica cada transação reutilizando a lógica de verificar_conformidade
+    resultados = []
+    requerem_aprovacao = []
+
+    for t in transacoes:
+        resultado_json = verificar_conformidade(
+            empresa_id=t["empresa_id"],
+            pedido_id=t["pedido_id"],
+            valor_total_atual=t["valor_total"],
+            fornecedores_atuais=t["fornecedores"],
+            localizacao_atual=t["localizacao"],
+        )
+        resultado = json.loads(resultado_json)
+        resultados.append(resultado)
+        if resultado.get("requer_aprovacao"):
+            requerem_aprovacao.append(resultado)
+
+    # Monta o relatório consolidado
+    total = len(resultados)
+    n_ok = total - len(requerem_aprovacao)
+    n_nok = len(requerem_aprovacao)
+
+    linhas = [
+        f"RELATÓRIO DE CONFORMIDADE — LOTE CSV",
+        f"Arquivo : {path.name}",
+        f"Total   : {total} transações analisadas",
+        f"✅ Em conformidade  : {n_ok}",
+        f"⚠️  Requerem aprovação: {n_nok}",
+        f"═══════════════════════════════════════════════════════════════",
+    ]
+
+    for r in resultados:
+        status = "⚠️  REQUER APROVAÇÃO" if r.get("requer_aprovacao") else "✅ EM CONFORMIDADE"
+        linhas.append(f"\n{status} — {r.get('empresa_nome', r.get('empresa_id'))} / {r.get('pedido_id')}")
+        if r.get("erro"):
+            linhas.append(f"  ERRO: {r['erro']}")
+            continue
+        linhas.append(f"  Valor: R$ {r['valor_total_atual']:,.2f}  |  Média histórica: R$ {r['media_historica_mensal']:,.2f}  |  Variação: {r['variacao_percentual']:+.1f}%")
+        if r.get("requer_aprovacao"):
+            for div in r.get("divergencias", []):
+                linhas.append(f"  • {div}")
+            contatos = r.get("contatos_aprovadores", [])
+            if contatos:
+                linhas.append(f"  Aprovadores a acionar:")
+                for c in contatos:
+                    linhas.append(f"    → {c['nome']} ({c['area']}) — {c['email']}")
+
+    linhas.append(f"\n═══════════════════════════════════════════════════════════════")
+    if requerem_aprovacao:
+        linhas.append(f"PRÓXIMO PASSO: chame enviar_solicitacao_aprovacao() para cada")
+        linhas.append(f"empresa acima marcada com ⚠️, usando os dados dos aprovadores listados.")
+    else:
+        linhas.append("Todas as transações estão em conformidade. Nenhuma ação necessária.")
+
+    return "\n".join(linhas)
 
 
 # ---------------------------------------------------------------------------

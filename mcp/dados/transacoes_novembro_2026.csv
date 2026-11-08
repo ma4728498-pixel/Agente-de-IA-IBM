@@ -1,0 +1,7 @@
+empresa_id,pedido_id,valor_total,fornecedores,localizacao
+EMP-001,Novembro/2026,4750.00,"Amazon Web Services (AWS)|Google Cloud|Kalunga","São Paulo, SP"
+EMP-002,Novembro/2026,25800.00,"Auto Posto Rodovia|Fornecedor NovoBrasil","Campinas, SP"
+EMP-003,Novembro/2026,22200.00,"Cimento Votoran S.A.","Limeira, SP"
+EMP-004,Novembro/2026,38500.00,"Moinho J. Macedo|Cargill Agrícola|Tetra Pak","Curitiba, PR"
+EMP-005,Novembro/2026,7550.00,"JetBrains s.r.o.|Amazon Web Services (AWS)","Belo Horizonte, MG"
+EMP-007,Novembro/2026,71000.00,"Canadian Solar|WEG S.A.","Brasília, DF"
