@@ -473,6 +473,106 @@ def analisar_lote_csv(caminho_csv: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Tool 6: analisar_lote_csv_json
+# ---------------------------------------------------------------------------
+@server.tool()
+def analisar_lote_csv_json(caminho_csv: str) -> str:
+    """Ingere um arquivo CSV de transações de compras e executa a verificação de
+    conformidade para cada linha em paralelo (ThreadPoolExecutor), retornando
+    structured JSON output pronto para consumo por outros sistemas ou agentes.
+
+    Idêntico a analisar_lote_csv(), mas retorna JSON estruturado em vez de
+    relatório em texto — adequado para trigger-based workflows e integrações.
+
+    Formato esperado do CSV (separador vírgula, cabeçalho obrigatório):
+      empresa_id, pedido_id, valor_total, fornecedores, localizacao
+
+    O campo 'fornecedores' pode conter múltiplos valores separados por '|'.
+
+    Retorna JSON com:
+      - resumo: { total, em_conformidade, requerem_aprovacao }
+      - resultados: lista completa de verificações com todos os campos
+      - acoes_necessarias: lista apenas das empresas que requerem aprovação,
+        com contatos_aprovadores prontos para enviar_solicitacao_aprovacao()
+
+    Args:
+        caminho_csv: Caminho absoluto ou relativo ao arquivo CSV. Caminhos relativos
+                     são resolvidos a partir da raiz do repositório.
+    """
+    import concurrent.futures
+
+    # Resolve o caminho
+    path = Path(caminho_csv)
+    if not path.is_absolute():
+        path = ROOT / caminho_csv
+    if not path.exists():
+        path_dados = ROOT / "mcp" / "dados" / caminho_csv
+        if path_dados.exists():
+            path = path_dados
+        else:
+            return json.dumps({
+                "erro": f"Arquivo não encontrado: {caminho_csv}",
+                "dica": "Use o caminho completo ou coloque o arquivo em mcp/dados/",
+            }, ensure_ascii=False, indent=2)
+
+    # Lê o CSV
+    transacoes = []
+    try:
+        with open(path, encoding="utf-8-sig") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                transacoes.append({
+                    "empresa_id": row["empresa_id"].strip(),
+                    "pedido_id": row["pedido_id"].strip(),
+                    "valor_total": float(row["valor_total"].strip()),
+                    "fornecedores": [f.strip() for f in row["fornecedores"].split("|")],
+                    "localizacao": row["localizacao"].strip(),
+                })
+    except Exception as e:
+        return json.dumps({"erro": f"Erro ao ler CSV: {e}"}, ensure_ascii=False, indent=2)
+
+    if not transacoes:
+        return json.dumps({"erro": "CSV vazio ou sem linhas de dados."}, ensure_ascii=False, indent=2)
+
+    # Verifica cada transação em paralelo — cada worker é um sub-agente de auditoria
+    def _verificar(t: dict) -> dict:
+        resultado_json = verificar_conformidade(
+            empresa_id=t["empresa_id"],
+            pedido_id=t["pedido_id"],
+            valor_total_atual=t["valor_total"],
+            fornecedores_atuais=t["fornecedores"],
+            localizacao_atual=t["localizacao"],
+        )
+        return json.loads(resultado_json)
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(transacoes)) as executor:
+        resultados = list(executor.map(_verificar, transacoes))
+
+    acoes_necessarias = [r for r in resultados if r.get("requer_aprovacao")]
+
+    return json.dumps({
+        "arquivo": path.name,
+        "resumo": {
+            "total_transacoes": len(resultados),
+            "em_conformidade": len(resultados) - len(acoes_necessarias),
+            "requerem_aprovacao": len(acoes_necessarias),
+            "workers_paralelos": len(transacoes),
+        },
+        "resultados": resultados,
+        "acoes_necessarias": [
+            {
+                "empresa_nome": r["empresa_nome"],
+                "empresa_id": r["empresa_id"],
+                "pedido_id": r["pedido_id"],
+                "divergencias": r["divergencias"],
+                "contatos_aprovadores": r["contatos_aprovadores"],
+            }
+            for r in acoes_necessarias
+        ],
+    }, ensure_ascii=False, indent=2)
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":

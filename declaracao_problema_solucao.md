@@ -10,7 +10,9 @@ O custo dessa ineficiência é alto: transações fraudulentas passam despercebi
 
 ## A Solução
 
-O **Agente de Conformidade de Compras VF** é um agente de IA nativo do IBM watsonx Orchestrate que automatiza completamente o ciclo de auditoria de compras. A solução verifica 3 critérios de conformidade em cada transação:
+O **Agente de Conformidade de Compras VF** combina **IBM Bob** como motor conversacional central e **IBM watsonx Orchestrate** como motor de orquestração para automatizar completamente o ciclo de auditoria de compras. Ana Paula entrega o arquivo CSV de transações do mês diretamente ao IBM Bob em linguagem natural — o Bob ingere o documento, despacha sub-agentes de auditoria em paralelo para cada empresa e consolida o resultado em segundos.
+
+A solução verifica 3 critérios de conformidade em cada transação:
 
 1. **Valor atípico:** o valor total do mês é mais de 15% acima da média histórica da empresa
 2. **Fornecedor novo:** o fornecedor não aparece no histórico de meses anteriores da empresa
@@ -18,13 +20,13 @@ O **Agente de Conformidade de Compras VF** é um agente de IA nativo do IBM wats
 
 Quando qualquer critério é violado, o agente aciona automaticamente os **2 contatos aprovadores** cadastrados para aquela empresa na knowledge base, gerando e-mails formais de solicitação de aprovação com prazo de 48 horas.
 
-A interface de interação é uma aplicação web desenvolvida em **Streamlit**, onde Ana Paula pode fazer perguntas em linguagem natural ("Verifique Outubro/2026 da EMP-007") e receber um relatório visual estruturado com status de conformidade, critérios avaliados, contatos acionados e modelos de e-mail prontos para envio.
+Ana Paula interage com o sistema exclusivamente via **IBM Bob** em linguagem natural — digitando uma solicitação como *"Analise o arquivo de compras de Novembro"* e recebendo o diagnóstico completo com as ações necessárias. Uma interface web alternativa em Streamlit também está disponível publicamente para acesso sem o Bob.
 
 ## Por que é criativo e único
 
-A solução combina **RAG (Retrieval-Augmented Generation)** com lógica de negócio determinística: o agente não "alucina" regras — ele executa ferramentas Python auditáveis que aplicam os critérios exatos definidos pela política da empresa. Os contatos aprovadores são sempre extraídos da knowledge base, nunca inventados pelo modelo.
+A solução combina **ingestão de documento** (CSV de transações), **RAG** sobre a knowledge base histórica, **sub-agentes especializados em paralelo** (auditoria e notificação com responsabilidade única) e **lógica de negócio determinística**: o agente não "alucina" regras — ele executa ferramentas Python auditáveis que aplicam os critérios exatos definidos pela política da empresa. Os contatos aprovadores são sempre extraídos da knowledge base, nunca inventados pelo modelo.
 
-O diferencial está na **automação ponta a ponta**: da consulta ao histórico, passando pela detecção da anomalia, até a geração dos e-mails de aprovação — tudo em uma única interação conversacional que antes consumia horas de trabalho manual.
+O diferencial está na **orquestração pelo IBM Bob ponta a ponta**: da ingestão do CSV com verificações paralelas, passando pela detecção das anomalias, até a geração dos e-mails de aprovação — tudo em uma única interação conversacional, sem nenhuma intervenção manual.
 
 ## Impacto mensurável
 

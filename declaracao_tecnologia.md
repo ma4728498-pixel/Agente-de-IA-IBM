@@ -26,41 +26,51 @@ Bob diagnosticou e corrigiu múltiplos problemas em tempo real:
 - Criou o `.env.example` como template documentado
 - Configurou o `requirements.txt` com versões fixas para deploy reproduzível
 
-### 5. Servidor MCP para uso como frontend conversacional
-Bob projetou e implementou o servidor MCP em `mcp/server.py`, expondo as 4 ferramentas de conformidade ao IBM Bob via protocolo MCP (stdio):
-- `listar_empresas` — descobre as empresas disponíveis na knowledge base
-- `obter_empresa` — recupera dados completos por ID ou nome
-- `verificar_conformidade` — aplica os 3 critérios automaticamente, buscando o histórico da KB internamente
-- `enviar_solicitacao_aprovacao` — gera os e-mails formais de aprovação
+### 5. Servidor MCP — IBM Bob como motor conversacional com sub-agentes e document ingestion
+Bob projetou e implementou o servidor MCP em `mcp/server.py`, expondo 6 ferramentas ao IBM Bob via protocolo MCP (stdio). Cada ferramenta tem responsabilidade única e funciona como um **sub-agente especializado** orquestrado pelo Bob:
 
-O servidor foi registrado em `.bob/mcp.json` para que o IBM Bob possa atuar como **frontend conversacional direto** — sem necessidade da interface Streamlit — demonstrando o agente de conformidade puramente via chat com o Bob.
+- `listar_empresas` — sub-agente de descoberta: retorna as 8 empresas da knowledge base
+- `obter_empresa` — sub-agente de contexto: recupera histórico completo por ID ou nome
+- `verificar_conformidade` — **sub-agente de auditoria**: aplica os 3 critérios de conformidade para uma empresa, buscando o histórico da KB internamente; retorna structured JSON output com `requer_aprovacao`, `divergencias`, `variacao_percentual` e `contatos_aprovadores`
+- `enviar_solicitacao_aprovacao` — **sub-agente de notificação**: gera e-mails formais de aprovação para os 2 contatos responsáveis
+- `analisar_lote_csv` — **document ingestion**: ingere um arquivo CSV de transações e executa verificação para todas as empresas, retornando relatório consolidado
+- `analisar_lote_csv_json` — **document ingestion + parallel sub-tasks + structured JSON output**: ingere o CSV e dispara verificações em paralelo via `ThreadPoolExecutor` (um worker por empresa), retornando JSON estruturado com `resumo`, `resultados` e `acoes_necessarias` — adequado para trigger-based workflows
+
+O servidor foi registrado em `.bob/mcp.json`. O IBM Bob atua como **orquestrador conversacional**: recebe a solicitação em linguagem natural, faz document ingestion do CSV via MCP, despacha os sub-agentes de auditoria em paralelo e aciona o sub-agente de notificação para cada divergência encontrada.
 
 ### 6. Documentação
-Bob redigiu e atualizou o `README.md` com estrutura de projeto, instruções de deploy, seção de interface web com 5 passos detalhados, diagrama de arquitetura Mermaid e seção de testes.
+Bob redigiu e atualizou o `README.md` com estrutura de projeto, instruções de deploy, diagrama de arquitetura Mermaid, seção de testes e instruções de registro do MCP server.
 
 ---
 
 ## IBM watsonx Orchestrate
 
-O **IBM watsonx Orchestrate** é o motor central da solução:
+O **IBM watsonx Orchestrate** (instância `eu-de`, região Europa) é o motor de orquestração da solução:
 
-- **Agente nativo** `agente_conformidade_VF` configurado via YAML com instruções detalhadas de fluxo obrigatório (verificar → enviar se necessário)
-- **Knowledge Base RAG** `compras_conformidade_kb` com `empresas_corporativas.json` contendo histórico mensal de 8 empresas (Mai–Out/2026), valores, fornecedores, localizações e contatos aprovadores
-- **2 ferramentas Python** registradas no WXO:
-  - `verificar_conformidade_transacao`: aplica os 3 critérios e retorna divergências
-  - `enviar_solicitacao_aprovacao_conformidade`: gera e-mails formais para os 2 aprovadores
-- **SDK Python** (`ibm-watsonx-orchestrate`) usado no frontend para comunicação via threads e runs
+- **Agente nativo** `agente_conformidade_VF` configurado via YAML (`spec_version: v1`, `kind: native`, `style: react_core`) com fluxo obrigatório de 3 passos: (1) consultar KB, (2) chamar `verificar_conformidade_transacao`, (3) chamar `enviar_solicitacao_aprovacao_conformidade` se necessário
+- **Knowledge Base RAG** `compras_conformidade_kb` alimentada por `empresas_corporativas.json` com histórico mensal de 8 empresas (Mai–Out/2026): valores totais, fornecedores, localizações e 2 contatos aprovadores por empresa; configurada com `retrieval_confidence_threshold: Low` e `query_rewrite: enabled`
+- **2 ferramentas Python** registradas no IBM watsonx Orchestrate:
+  - `verificar_conformidade_transacao`: aplica os 3 critérios de conformidade e retorna JSON com `requer_aprovacao`, `divergencias`, `tipos_divergencia` e `variacao_percentual`
+  - `enviar_solicitacao_aprovacao_conformidade`: gera e-mails formais estruturados para os 2 aprovadores cadastrados na KB
+- **SDK Python** `ibm-watsonx-orchestrate==2.19.1` usado no frontend Streamlit para comunicação via threads e runs com autenticação IAM gerada em runtime
 
-## IBM Granite
+## Modelo de linguagem
 
-O LLM utilizado pelo agente no IBM watsonx Orchestrate é **IBM Granite**, configurado no `agente_conformidade_VF.yaml`. O modelo é responsável por interpretar as consultas em linguagem natural, orquestrar as chamadas às ferramentas na ordem correta e formatar a resposta final no template estruturado definido nas instruções do agente.
+O agente utiliza o modelo configurado no IBM watsonx Orchestrate (`groq/openai/gpt-oss-120b`). Ele é responsável por interpretar as consultas em linguagem natural, orquestrar as chamadas às ferramentas na ordem correta e extrair os dados relevantes da knowledge base via RAG. Toda a lógica de negócio é delegada às ferramentas Python determinísticas — o modelo não inventa regras nem dados.
+
+## IBM Bob
+
+O **IBM Bob** é utilizado em duas dimensões:
+- **Durante o desenvolvimento**: copiloto de engenharia que reorganizou o projeto, criou o frontend, diagnosticou bugs de configuração e gerou a documentação
+- **Em produção**: motor conversacional central via servidor MCP — recebe linguagem natural, orquestra sub-agentes especializados, faz document ingestion de CSVs e entrega o fluxo completo de auditoria sem intervenção manual
 
 ## Ferramentas Open Source
 
 | Ferramenta | Uso |
 |---|---|
-| **Python 3.14** | Implementação das tools e lógica de conformidade |
-| **Streamlit 1.67** | Interface web conversacional |
-| **mcp[cli] 2.x** | Protocolo MCP para integração direta com IBM Bob |
+| **Python 3.14** | Implementação das tools, lógica de conformidade e servidor MCP |
+| **Streamlit 1.67** | Interface web alternativa (acesso público via Streamlit Cloud) |
+| **mcp[cli] 2.x** | Protocolo MCP (stdio) para integração direta com IBM Bob |
+| **concurrent.futures** | ThreadPoolExecutor para verificações paralelas no lote CSV |
 | **python-dotenv** | Gerenciamento de credenciais local |
 | **Git** | Controle de versão |
