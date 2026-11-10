@@ -729,6 +729,214 @@ def processar_invoice(caminho_invoice: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Tool 8: processar_pdf_invoice
+# ---------------------------------------------------------------------------
+@server.tool()
+def processar_pdf_invoice(caminho_pdf: str) -> str:
+    """Ingere uma nota fiscal em formato PDF, extrai os campos e line items via
+    pdfplumber, verifica conformidade contra o histórico da empresa na knowledge
+    base e registra o resultado no mock ERP.
+
+    Funciona com PDFs de texto selecionável (não OCR/escaneados).
+    Espera o formato gerado por gerar_nota_fiscal_pdf.py, com campos:
+      Número, Período, Empresa ID, Localização, e tabela de line items.
+
+    Args:
+        caminho_pdf: Caminho absoluto ou relativo ao arquivo PDF.
+                     Caminhos relativos são resolvidos a partir da raiz do repositório.
+    """
+    import concurrent.futures
+    import datetime
+    import re as _re
+
+    try:
+        import pdfplumber
+    except ImportError:
+        return json.dumps({
+            "erro": "pdfplumber não instalado. Execute: pip install pdfplumber"
+        }, ensure_ascii=False, indent=2)
+
+    # Resolve o caminho
+    path = Path(caminho_pdf)
+    if not path.is_absolute():
+        path = ROOT / caminho_pdf
+    if not path.exists():
+        path_dados = ROOT / "mcp" / "dados" / caminho_pdf
+        if path_dados.exists():
+            path = path_dados
+        else:
+            return json.dumps({
+                "erro": f"PDF não encontrado: {caminho_pdf}",
+                "dica": "Use o caminho completo ou coloque o arquivo em mcp/dados/",
+            }, ensure_ascii=False, indent=2)
+
+    # Extrai texto do PDF
+    try:
+        with pdfplumber.open(str(path)) as pdf:
+            texto = "\n".join(p.extract_text() or "" for p in pdf.pages)
+    except Exception as e:
+        return json.dumps({"erro": f"Erro ao ler PDF: {e}"}, ensure_ascii=False, indent=2)
+
+    # Parse dos campos de cabeçalho
+    def _extrair(label: str) -> str:
+        m = _re.search(rf'{label}[:\s]+(.+)', texto, _re.IGNORECASE)
+        return m.group(1).strip() if m else ""
+
+    invoice_id  = _extrair("N.mero")        or _extrair("Numero")     or _extrair("Invoice")
+    periodo     = _extrair("Per.odo")        or _extrair("Periodo")    or _extrair("Per")
+    empresa_id  = _extrair("Empresa ID")
+    localizacao = _extrair("Localiza..o")    or _extrair("Localizacao")
+    valor_str   = _extrair("VALOR TOTAL")
+
+    # Normaliza valor total
+    valor_total = 0.0
+    try:
+        valor_total = float(valor_str.replace(".", "").replace(",", ".").strip())
+    except Exception:
+        pass
+
+    if not empresa_id:
+        return json.dumps({
+            "erro": "Não foi possível extrair o campo 'Empresa ID' do PDF.",
+            "texto_extraido": texto[:500],
+        }, ensure_ascii=False, indent=2)
+
+    # Parse dos line items — processa linha a linha buscando padrão LI-XXX
+    # Formato: "LI-001 Descrição ... Fornecedor Valor"
+    line_items = []
+    padrao_item = _re.compile(r'^(LI-\d+)\s+(.+)\s+([\d]{1,3}(?:[.,]\d{3})*[.,]\d{2})$')
+    for linha in texto.splitlines():
+        m = padrao_item.match(linha.strip())
+        if not m:
+            continue
+        item_id = m.group(1)
+        meio = m.group(2).strip()
+        valor_str_item = m.group(3)
+        # O meio contém "descrição  fornecedor" — tenta dividir pelo último bloco de espaços duplos
+        # ou usa heurística: últimas 2-4 palavras são o fornecedor
+        partes = _re.split(r'\s{2,}', meio)
+        if len(partes) >= 2:
+            descricao = partes[0].strip()
+            fornecedor = partes[-1].strip()
+        else:
+            # fallback: últimas 3 palavras são o fornecedor
+            palavras = meio.rsplit(None, 3)
+            if len(palavras) > 3:
+                descricao = " ".join(palavras[:-3])
+                fornecedor = " ".join(palavras[-3:])
+            else:
+                descricao = meio
+                fornecedor = meio
+        # Remove prefixo residual de linha anterior (ex: "un. ", "litros ")
+        # Só remove se for token curto (≤5 chars) seguido por palavra maiúscula
+        fornecedor = _re.sub(r'^\S{1,5}\.\s+(?=[A-Z])', '', fornecedor).strip()
+        try:
+            valor_item = float(valor_str_item.replace(".", "").replace(",", "."))
+        except Exception:
+            valor_item = 0.0
+        line_items.append({
+            "item_id": item_id,
+            "descricao": descricao,
+            "fornecedor": fornecedor,
+            "valor": valor_item,
+            "categoria": "Extraído via PDF",
+        })
+
+    if not line_items:
+        return json.dumps({
+            "erro": "Nenhum line item encontrado no PDF.",
+            "texto_extraido": texto[:800],
+        }, ensure_ascii=False, indent=2)
+
+    # Sub-agentes em paralelo — um por line item
+    def _processar_item(item: dict) -> dict:
+        fornecedor = item.get("fornecedor", "")
+        resultado_json = verificar_conformidade(
+            empresa_id=empresa_id,
+            pedido_id=periodo,
+            valor_total_atual=valor_total,
+            fornecedores_atuais=[fornecedor],
+            localizacao_atual=localizacao,
+        )
+        resultado = json.loads(resultado_json)
+        return {
+            "item_id": item["item_id"],
+            "descricao": item["descricao"],
+            "fornecedor": fornecedor,
+            "valor": item["valor"],
+            "fornecedor_aprovado": fornecedor not in resultado.get("fornecedores_novos", []),
+            "divergencias_item": [
+                d for d in resultado.get("divergencias", [])
+                if "fornecedor" in d.lower() or fornecedor.lower() in d.lower()
+            ],
+        }
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(line_items)) as executor:
+        itens_processados = list(executor.map(_processar_item, line_items))
+
+    # Verificação geral da invoice
+    todos_fornecedores = [item["fornecedor"] for item in line_items]
+    resultado_geral = json.loads(verificar_conformidade(
+        empresa_id=empresa_id,
+        pedido_id=periodo,
+        valor_total_atual=valor_total,
+        fornecedores_atuais=todos_fornecedores,
+        localizacao_atual=localizacao,
+    ))
+
+    requer_aprovacao = resultado_geral.get("requer_aprovacao", False)
+    contatos = resultado_geral.get("contatos_aprovadores", [])
+
+    # Grava no mock ERP
+    registro_erp = {
+        "invoice_id": invoice_id,
+        "fonte": "PDF",
+        "arquivo": path.name,
+        "processado_em": datetime.datetime.utcnow().isoformat() + "Z",
+        "empresa_id": empresa_id,
+        "periodo_referencia": periodo,
+        "valor_total": valor_total,
+        "total_line_items": len(line_items),
+        "workers_paralelos": len(line_items),
+        "status": "REQUER_APROVACAO" if requer_aprovacao else "APROVADO_AUTOMATICAMENTE",
+        "divergencias": resultado_geral.get("divergencias", []),
+        "line_items_processados": itens_processados,
+        "contatos_aprovadores": contatos,
+    }
+
+    erp_path = ROOT / "mcp" / "dados" / "erp_mock.json"
+    erp_gravado = False
+    try:
+        with open(erp_path, encoding="utf-8") as f:
+            erp = json.load(f)
+        erp["registros"].append(registro_erp)
+        with open(erp_path, "w", encoding="utf-8") as f:
+            json.dump(erp, f, ensure_ascii=False, indent=2)
+        erp_gravado = True
+    except Exception:
+        pass
+
+    return json.dumps({
+        "invoice_id": invoice_id,
+        "fonte": "PDF",
+        "arquivo": path.name,
+        "empresa_id": empresa_id,
+        "periodo_referencia": periodo,
+        "localizacao": localizacao,
+        "valor_total": valor_total,
+        "resumo": {
+            "total_line_items": len(line_items),
+            "workers_paralelos": len(line_items),
+            "requer_aprovacao": requer_aprovacao,
+            "divergencias": resultado_geral.get("divergencias", []),
+            "erp_atualizado": erp_gravado,
+        },
+        "line_items_processados": itens_processados,
+        "contatos_aprovadores": contatos,
+    }, ensure_ascii=False, indent=2)
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
