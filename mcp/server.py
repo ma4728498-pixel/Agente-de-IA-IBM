@@ -304,11 +304,11 @@ def enviar_solicitacao_aprovacao(
 
     def _email(nome: str, email: str) -> str:
         return (
-            f"┌─────────────────────────────────────────────────────────────────┐\n"
+            f"─────────────────────────────────────────────────────────────────\n"
             f"  SOLICITAÇÃO DE APROVAÇÃO — {nome.upper()}\n"
             f"  Para: {email}\n"
-            f"├─────────────────────────────────────────────────────────────────┤\n"
-            f"  Assunto: {assunto}\n\n"
+            f"  Assunto: {assunto}\n"
+            f"─────────────────────────────────────────────────────────────────\n\n"
             f"  Prezado(a) {nome},\n\n"
             f"  O sistema de Conformidade de Compras identificou divergências na\n"
             f"  transação abaixo que requerem sua aprovação formal:\n\n"
@@ -324,7 +324,7 @@ def enviar_solicitacao_aprovacao(
             f"  Prazo para resposta: 48 horas a partir do recebimento deste e-mail.\n\n"
             f"  Atenciosamente,\n"
             f"  Sistema de Conformidade de Compras — Agente de Conformidade VF\n"
-            f"└─────────────────────────────────────────────────────────────────┘"
+            f"─────────────────────────────────────────────────────────────────"
         )
 
     email_1 = _email(nome_aprovador_1, email_aprovador_1)

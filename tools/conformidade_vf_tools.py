@@ -201,11 +201,11 @@ def enviar_solicitacao_aprovacao_conformidade(
 
     def _email(nome: str, email: str, cargo: str) -> str:
         return f"""\
-┌─────────────────────────────────────────────────────────────────┐
+─────────────────────────────────────────────────────────────────
   SOLICITAÇÃO DE APROVAÇÃO — {nome.upper()}
   Para: {email}
-├─────────────────────────────────────────────────────────────────┤
   Assunto: {assunto}
+─────────────────────────────────────────────────────────────────
 
   Prezado(a) {nome},
 
@@ -228,7 +228,7 @@ def enviar_solicitacao_aprovacao_conformidade(
 
   Atenciosamente,
   Sistema de Conformidade de Compras — Agente de Conformidade VF
-└─────────────────────────────────────────────────────────────────┘"""
+─────────────────────────────────────────────────────────────────"""
 
     email_1 = _email(nome_aprovador_1, email_aprovador_1, cargo_aprovador_1)
     email_2 = _email(nome_aprovador_2, email_aprovador_2, cargo_aprovador_2)
