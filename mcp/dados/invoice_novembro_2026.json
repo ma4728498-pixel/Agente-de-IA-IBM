@@ -1,0 +1,37 @@
+{
+  "invoice_id": "INV-2026-1142",
+  "data_emissao": "2026-11-05",
+  "periodo_referencia": "Novembro/2026",
+  "empresa": {
+    "id": "EMP-002",
+    "nome": "Beta Logística e Transportes Ltda",
+    "cnpj": "12.345.678/0001-99",
+    "localizacao": "Campinas, SP"
+  },
+  "line_items": [
+    {
+      "item_id": "LI-001",
+      "descricao": "Óleo Diesel S10 — 8.000 litros",
+      "fornecedor": "Auto Posto Rodovia",
+      "valor": 12800.00,
+      "categoria": "Combustível"
+    },
+    {
+      "item_id": "LI-002",
+      "descricao": "Arla 32 — 500 litros",
+      "fornecedor": "Auto Posto Rodovia",
+      "valor": 1200.00,
+      "categoria": "Fluido veicular"
+    },
+    {
+      "item_id": "LI-003",
+      "descricao": "Pneus Radiais 295/80 R22.5 — 8 unidades",
+      "fornecedor": "Fornecedor NovoBrasil",
+      "valor": 11800.00,
+      "categoria": "Pneus e rodas"
+    }
+  ],
+  "valor_total": 25800.00,
+  "moeda": "BRL",
+  "status": "Pendente de aprovação"
+}

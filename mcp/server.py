@@ -573,6 +573,162 @@ def analisar_lote_csv_json(caminho_csv: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Tool 7: processar_invoice
+# ---------------------------------------------------------------------------
+@server.tool()
+def processar_invoice(caminho_invoice: str) -> str:
+    """Ingere uma invoice (nota fiscal) em formato JSON, extrai os line items
+    em paralelo via sub-agentes especializados, verifica a conformidade de cada
+    item contra o histórico da empresa na knowledge base e registra o resultado
+    no mock ERP.
+
+    Este é o fluxo completo de document understanding com Bob no Agent mode:
+      1. Ingestão do documento (invoice JSON)
+      2. Extração paralela de line items (ThreadPoolExecutor — um sub-agente por item)
+      3. Verificação de conformidade de cada item (fornecedor, valor, localização)
+      4. Integração com mock ERP (gravação do resultado estruturado)
+
+    Formato esperado da invoice (JSON):
+      {
+        "invoice_id": "INV-2026-1142",
+        "periodo_referencia": "Novembro/2026",
+        "empresa": { "id": "EMP-002", "nome": "...", "localizacao": "..." },
+        "line_items": [
+          { "item_id": "LI-001", "descricao": "...", "fornecedor": "...", "valor": 0.0, "categoria": "..." }
+        ],
+        "valor_total": 0.0
+      }
+
+    Args:
+        caminho_invoice: Caminho absoluto ou relativo ao arquivo JSON da invoice.
+                         Caminhos relativos são resolvidos a partir da raiz do repositório.
+    """
+    import concurrent.futures
+    import datetime
+
+    # Resolve o caminho
+    path = Path(caminho_invoice)
+    if not path.is_absolute():
+        path = ROOT / caminho_invoice
+    if not path.exists():
+        path_dados = ROOT / "mcp" / "dados" / caminho_invoice
+        if path_dados.exists():
+            path = path_dados
+        else:
+            return json.dumps({
+                "erro": f"Invoice não encontrada: {caminho_invoice}",
+                "dica": "Use o caminho completo ou coloque o arquivo em mcp/dados/",
+            }, ensure_ascii=False, indent=2)
+
+    # Lê a invoice
+    try:
+        with open(path, encoding="utf-8") as f:
+            invoice = json.load(f)
+    except Exception as e:
+        return json.dumps({"erro": f"Erro ao ler invoice: {e}"}, ensure_ascii=False, indent=2)
+
+    empresa_id = invoice.get("empresa", {}).get("id", "")
+    empresa_nome = invoice.get("empresa", {}).get("nome", "")
+    localizacao = invoice.get("empresa", {}).get("localizacao", "")
+    periodo = invoice.get("periodo_referencia", "")
+    valor_total = invoice.get("valor_total", 0.0)
+    line_items = invoice.get("line_items", [])
+
+    if not line_items:
+        return json.dumps({"erro": "Invoice sem line items."}, ensure_ascii=False, indent=2)
+
+    # Sub-agente especializado por line item — extração e verificação em paralelo
+    def _processar_item(item: dict) -> dict:
+        """Sub-agente de extração: processa um line item individualmente."""
+        fornecedor = item.get("fornecedor", "")
+        valor_item = item.get("valor", 0.0)
+
+        # Verifica o fornecedor deste item contra o histórico da empresa
+        resultado_json = verificar_conformidade(
+            empresa_id=empresa_id,
+            pedido_id=periodo,
+            valor_total_atual=valor_total,  # verifica valor total da invoice
+            fornecedores_atuais=[fornecedor],
+            localizacao_atual=localizacao,
+        )
+        resultado = json.loads(resultado_json)
+
+        return {
+            "item_id": item.get("item_id"),
+            "descricao": item.get("descricao"),
+            "fornecedor": fornecedor,
+            "valor": valor_item,
+            "categoria": item.get("categoria"),
+            "fornecedor_aprovado": fornecedor not in resultado.get("fornecedores_novos", []),
+            "divergencias_item": [
+                d for d in resultado.get("divergencias", [])
+                if fornecedor.lower() in d.lower() or "fornecedor" in d.lower()
+            ],
+        }
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(line_items)) as executor:
+        itens_processados = list(executor.map(_processar_item, line_items))
+
+    # Verifica conformidade geral da invoice
+    todos_fornecedores = [item.get("fornecedor", "") for item in line_items]
+    resultado_geral_json = verificar_conformidade(
+        empresa_id=empresa_id,
+        pedido_id=periodo,
+        valor_total_atual=valor_total,
+        fornecedores_atuais=todos_fornecedores,
+        localizacao_atual=localizacao,
+    )
+    resultado_geral = json.loads(resultado_geral_json)
+
+    requer_aprovacao = resultado_geral.get("requer_aprovacao", False)
+    contatos = resultado_geral.get("contatos_aprovadores", [])
+
+    # Monta registro estruturado para o ERP
+    registro_erp = {
+        "invoice_id": invoice.get("invoice_id"),
+        "processado_em": datetime.datetime.utcnow().isoformat() + "Z",
+        "empresa_id": empresa_id,
+        "empresa_nome": empresa_nome,
+        "periodo_referencia": periodo,
+        "valor_total": valor_total,
+        "total_line_items": len(line_items),
+        "workers_paralelos": len(line_items),
+        "status": "REQUER_APROVACAO" if requer_aprovacao else "APROVADO_AUTOMATICAMENTE",
+        "divergencias": resultado_geral.get("divergencias", []),
+        "line_items_processados": itens_processados,
+        "contatos_aprovadores": contatos,
+    }
+
+    # Grava no mock ERP
+    erp_path = ROOT / "mcp" / "dados" / "erp_mock.json"
+    try:
+        with open(erp_path, encoding="utf-8") as f:
+            erp = json.load(f)
+        erp["registros"].append(registro_erp)
+        with open(erp_path, "w", encoding="utf-8") as f:
+            json.dump(erp, f, ensure_ascii=False, indent=2)
+        erp_gravado = True
+    except Exception:
+        erp_gravado = False
+
+    return json.dumps({
+        "invoice_id": invoice.get("invoice_id"),
+        "empresa_nome": empresa_nome,
+        "periodo_referencia": periodo,
+        "valor_total": valor_total,
+        "resumo": {
+            "total_line_items": len(line_items),
+            "workers_paralelos": len(line_items),
+            "requer_aprovacao": requer_aprovacao,
+            "divergencias": resultado_geral.get("divergencias", []),
+            "erp_atualizado": erp_gravado,
+        },
+        "line_items_processados": itens_processados,
+        "contatos_aprovadores": contatos,
+    }, ensure_ascii=False, indent=2)
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":

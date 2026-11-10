@@ -369,7 +369,7 @@ with st.sidebar:
     st.markdown("""
     <div style="font-size:0.75rem;color:#6f6f6f;margin-bottom:0.5rem">
         Powered by <strong>IBM watsonx Orchestrate</strong><br>
-        LLM: <strong>IBM Granite</strong> · RAG: <strong>watsonx KB</strong><br>
+        RAG: <strong>watsonx KB</strong><br>
         Desenvolvido com <strong>IBM Bob</strong>
     </div>
     """, unsafe_allow_html=True)
@@ -388,9 +388,61 @@ with st.sidebar:
         st.rerun()
 
     st.markdown("---")
-    st.markdown("### ⚡ Ações Rápidas")
+    st.markdown("### 📄 Ingestão de Documento")
 
     atalho_selecionado = None
+
+    arquivo_invoice = st.file_uploader(
+        "Enviar invoice (JSON)",
+        type=["json"],
+        help="Formato: invoice com campos invoice_id, empresa, line_items e valor_total"
+    )
+
+    if arquivo_invoice is not None:
+        import tempfile, pathlib
+        tmp_dir = pathlib.Path(tempfile.mkdtemp())
+        tmp_path = tmp_dir / arquivo_invoice.name
+        tmp_path.write_bytes(arquivo_invoice.getvalue())
+
+        if st.button("🔍 Processar Invoice", use_container_width=True, key="btn_invoice"):
+            prompt_invoice = (
+                f"Ana Paula recebeu uma invoice para processamento. "
+                f"Processe a invoice em: {tmp_path}"
+            )
+            if "atalho_invoice" not in st.session_state:
+                st.session_state["atalho_invoice"] = prompt_invoice
+            st.rerun()
+
+    if "atalho_invoice" in st.session_state:
+        atalho_selecionado = st.session_state.pop("atalho_invoice")
+
+    arquivo_csv = st.file_uploader(
+        "Enviar lote de transações (CSV)",
+        type=["csv"],
+        help="Colunas: empresa_id, pedido_id, valor_total, fornecedores (separados por |), localizacao"
+    )
+
+    if arquivo_csv is not None:
+        import tempfile, pathlib
+        tmp_dir = pathlib.Path(tempfile.mkdtemp())
+        tmp_path = tmp_dir / arquivo_csv.name
+        tmp_path.write_bytes(arquivo_csv.getvalue())
+
+        if st.button("📊 Analisar Lote CSV", use_container_width=True, key="btn_csv"):
+            prompt_csv = (
+                f"Ana Paula enviou o arquivo de transações de compras. "
+                f"Analise com retorno estruturado: {tmp_path}"
+            )
+            if "atalho_csv" not in st.session_state:
+                st.session_state["atalho_csv"] = prompt_csv
+            st.rerun()
+
+    if "atalho_csv" in st.session_state:
+        atalho_selecionado = st.session_state.pop("atalho_csv")
+
+    st.markdown("---")
+    st.markdown("### ⚡ Ações Rápidas")
+
     if st.button("🔍 Verificar todas as empresas (Outubro/2026)", use_container_width=True):
         atalho_selecionado = (
             "Verifique a conformidade de todas as 8 empresas para o mês de Outubro/2026 "
@@ -451,7 +503,7 @@ st.markdown("""
             </svg>
             <span style="font-weight:700;color:#0f62fe;font-size:1.1rem">IBM</span>
         </div>
-        <span style="font-size:0.75rem;color:#6f6f6f">watsonx Orchestrate · Granite · IBM Bob</span>
+        <span style="font-size:0.75rem;color:#6f6f6f">watsonx Orchestrate · IBM Bob</span>
     </div>
 </div>
 <hr style="margin:0 0 1rem 0;border-color:#e0e0e0">
