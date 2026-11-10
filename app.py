@@ -399,15 +399,12 @@ with st.sidebar:
     )
 
     if arquivo_invoice is not None:
-        import tempfile, pathlib
-        tmp_dir = pathlib.Path(tempfile.mkdtemp())
-        tmp_path = tmp_dir / arquivo_invoice.name
-        tmp_path.write_bytes(arquivo_invoice.getvalue())
-
+        conteudo_invoice = arquivo_invoice.read().decode("utf-8")
         if st.button("🔍 Processar Invoice", use_container_width=True, key="btn_invoice"):
             prompt_invoice = (
-                f"Ana Paula recebeu uma invoice para processamento. "
-                f"Processe a invoice em: {tmp_path}"
+                f"Ana Paula recebeu uma invoice para verificação de conformidade. "
+                f"Analise cada item desta invoice e verifique se requer aprovação:\n\n"
+                f"{conteudo_invoice}"
             )
             if "atalho_invoice" not in st.session_state:
                 st.session_state["atalho_invoice"] = prompt_invoice
@@ -423,15 +420,12 @@ with st.sidebar:
     )
 
     if arquivo_csv is not None:
-        import tempfile, pathlib
-        tmp_dir = pathlib.Path(tempfile.mkdtemp())
-        tmp_path = tmp_dir / arquivo_csv.name
-        tmp_path.write_bytes(arquivo_csv.getvalue())
-
+        conteudo_csv = arquivo_csv.read().decode("utf-8")
         if st.button("📊 Analisar Lote CSV", use_container_width=True, key="btn_csv"):
             prompt_csv = (
                 f"Ana Paula enviou o arquivo de transações de compras. "
-                f"Analise com retorno estruturado: {tmp_path}"
+                f"Analise todas as empresas abaixo e identifique divergências:\n\n"
+                f"{conteudo_csv}"
             )
             if "atalho_csv" not in st.session_state:
                 st.session_state["atalho_csv"] = prompt_csv
