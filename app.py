@@ -475,6 +475,33 @@ with st.sidebar:
 
     atalho_selecionado = None
 
+    arquivo_pdf = st.file_uploader(
+        "Enviar nota fiscal (PDF)",
+        type=["pdf"],
+        help="PDF de nota fiscal com texto selecionável (não escaneado)"
+    )
+
+    if arquivo_pdf is not None:
+        if st.button("📄 Processar Nota Fiscal PDF", use_container_width=True, key="btn_pdf"):
+            try:
+                import pdfplumber, io
+                with pdfplumber.open(io.BytesIO(arquivo_pdf.read())) as pdf:
+                    texto_pdf = "\n".join(p.extract_text() or "" for p in pdf.pages)
+                prompt_pdf = (
+                    f"Ana Paula recebeu esta nota fiscal em PDF para verificação de conformidade. "
+                    f"Extraia os dados (empresa, fornecedores, valor total, localização, período) "
+                    f"e verifique se requer aprovação:\n\n"
+                    f"{texto_pdf}"
+                )
+            except Exception as e:
+                prompt_pdf = f"Erro ao ler o PDF: {e}"
+            if "atalho_pdf" not in st.session_state:
+                st.session_state["atalho_pdf"] = prompt_pdf
+            st.rerun()
+
+    if "atalho_pdf" in st.session_state:
+        atalho_selecionado = st.session_state.pop("atalho_pdf")
+
     arquivo_invoice = st.file_uploader(
         "Enviar invoice (JSON)",
         type=["json"],
@@ -483,7 +510,7 @@ with st.sidebar:
 
     if arquivo_invoice is not None:
         conteudo_invoice = arquivo_invoice.read().decode("utf-8")
-        if st.button("🔍 Processar Invoice", use_container_width=True, key="btn_invoice"):
+        if st.button("🔍 Processar Invoice JSON", use_container_width=True, key="btn_invoice"):
             prompt_invoice = (
                 f"Ana Paula recebeu uma invoice para verificação de conformidade. "
                 f"Analise cada item desta invoice e verifique se requer aprovação:\n\n"
