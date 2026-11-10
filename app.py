@@ -84,54 +84,137 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Estilização CSS personalizada
+# Estilização CSS personalizada — IBM Carbon Design System
 st.markdown("""
 <style>
+    /* ── Tipografia e base ── */
+    html, body, [class*="css"] {
+        font-family: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+    }
+
+    /* ── Cabeçalho principal ── */
     .main-header {
-        font-size: 2rem;
-        font-weight: 700;
-        color: #0f62fe;
-        margin-bottom: 0.2rem;
+        font-size: 1.75rem;
+        font-weight: 600;
+        color: #161616;
+        letter-spacing: -0.02em;
+        margin-bottom: 0.15rem;
+        line-height: 1.2;
     }
     .sub-header {
-        font-size: 1rem;
-        color: #525252;
-        margin-bottom: 1.5rem;
+        font-size: 0.875rem;
+        color: #6f6f6f;
+        margin-bottom: 0;
+        font-weight: 400;
     }
+    .ibm-accent {
+        color: #0f62fe;
+        font-weight: 700;
+    }
+
+    /* ── Badge de status ── */
     .badge-status {
-        display: inline-block;
-        padding: 4px 10px;
-        border-radius: 12px;
-        font-size: 0.85rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 3px 10px;
+        border-radius: 2px;
+        font-size: 0.78rem;
         font-weight: 600;
         background-color: #defbe6;
         color: #0e6027;
-        margin-bottom: 1rem;
+        margin-bottom: 0.75rem;
+        letter-spacing: 0.01em;
     }
+
+    /* ── Cards de conformidade ── */
     .conformidade-card {
         background: #f4f4f4;
-        border-left: 4px solid #0f62fe;
-        border-radius: 6px;
-        padding: 1rem 1.2rem;
-        margin-bottom: 1rem;
+        border-left: 3px solid #0f62fe;
+        padding: 0.875rem 1.125rem;
+        margin-bottom: 0.75rem;
+        border-radius: 0 4px 4px 0;
     }
     .conformidade-card.aprovacao {
         border-left-color: #da1e28;
         background: #fff1f1;
     }
     .conformidade-card.ok {
-        border-left-color: #198038;
+        border-left-color: #24a148;
         background: #defbe6;
     }
+
+    /* ── Cards de contato ── */
     .contato-card {
         background: #ffffff;
         border: 1px solid #e0e0e0;
-        border-radius: 6px;
-        padding: 0.7rem 1rem;
+        border-top: 2px solid #0f62fe;
+        border-radius: 0 0 4px 4px;
+        padding: 0.75rem 1rem;
         margin-bottom: 0.5rem;
     }
+
+    /* ── Seção de upload ── */
+    .upload-section {
+        background: #f4f4f4;
+        border: 1px dashed #a8a8a8;
+        border-radius: 4px;
+        padding: 0.75rem 1rem;
+        margin-bottom: 0.5rem;
+    }
+    .upload-label {
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: #525252;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.35rem;
+    }
+
+    /* ── Sidebar ── */
+    section[data-testid="stSidebar"] {
+        background-color: #f4f4f4;
+        border-right: 1px solid #e0e0e0;
+    }
+    section[data-testid="stSidebar"] .stMarkdown h3 {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #525252;
+        margin-top: 1rem;
+        margin-bottom: 0.4rem;
+    }
+
+    /* ── Botões ── */
+    .stButton > button {
+        border-radius: 0 !important;
+        font-size: 0.875rem !important;
+        font-weight: 500 !important;
+        border: 1px solid #8d8d8d !important;
+        background: #ffffff !important;
+        color: #161616 !important;
+        transition: background 0.1s, border-color 0.1s !important;
+    }
+    .stButton > button:hover {
+        background: #e8e8e8 !important;
+        border-color: #525252 !important;
+    }
+
+    /* ── Chat ── */
     .stChatMessage {
-        border-radius: 10px;
+        border-radius: 0 !important;
+        border-bottom: 1px solid #e0e0e0;
+    }
+    .stChatInputContainer {
+        border-top: 2px solid #0f62fe !important;
+    }
+
+    /* ── Divisor lateral ── */
+    hr {
+        border: none;
+        border-top: 1px solid #e0e0e0;
+        margin: 0.75rem 0;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -477,16 +560,21 @@ with st.sidebar:
 # ÁREA PRINCIPAL DE CHAT
 # ==========================================
 
-# Cabeçalho com logos IBM
+# Cabeçalho principal — IBM Carbon style
 st.markdown("""
-<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem">
+<div style="display:flex;align-items:flex-start;justify-content:space-between;padding:1.25rem 0 1rem 0;border-bottom:2px solid #0f62fe;margin-bottom:1.25rem">
     <div>
-        <div class="main-header">🛡️ Agente de Conformidade de Compras</div>
-        <div class="sub-header">Verificação automática de conformidade integrada ao IBM watsonx Orchestrate</div>
+        <div style="font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:#6f6f6f;margin-bottom:0.4rem">
+            IBM watsonx Orchestrate · Agent Mode
+        </div>
+        <div class="main-header">Agente de Conformidade de Compras</div>
+        <div class="sub-header" style="margin-top:0.3rem">
+            Verificação automática de conformidade · Ingestão de documentos · Aprovação integrada
+        </div>
     </div>
-    <div style="text-align:right;line-height:1.4">
-        <div style="display:flex;align-items:center;gap:8px;justify-content:flex-end;margin-bottom:4px">
-            <svg width="40" height="16" viewBox="0 0 40 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;padding-top:4px">
+        <div style="display:flex;align-items:center;gap:8px">
+            <svg width="32" height="13" viewBox="0 0 40 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <rect width="4" height="16" fill="#0f62fe"/>
                 <rect x="6" y="4" width="4" height="8" fill="#0f62fe"/>
                 <rect x="12" y="0" width="4" height="16" fill="#0f62fe"/>
@@ -495,12 +583,11 @@ st.markdown("""
                 <rect x="30" y="4" width="4" height="8" fill="#0f62fe"/>
                 <rect x="36" y="0" width="4" height="16" fill="#0f62fe"/>
             </svg>
-            <span style="font-weight:700;color:#0f62fe;font-size:1.1rem">IBM</span>
+            <span style="font-weight:700;color:#0f62fe;font-size:1rem;letter-spacing:-0.01em">IBM</span>
         </div>
-        <span style="font-size:0.75rem;color:#6f6f6f">watsonx Orchestrate · IBM Bob</span>
+        <span style="font-size:0.7rem;color:#8d8d8d;font-weight:400">Desenvolvido com IBM Bob</span>
     </div>
 </div>
-<hr style="margin:0 0 1rem 0;border-color:#e0e0e0">
 """, unsafe_allow_html=True)
 
 # Exibe o histórico de mensagens
