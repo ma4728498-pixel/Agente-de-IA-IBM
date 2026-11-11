@@ -63,6 +63,128 @@
           "telefone": "(11) 97654-2222"
         }
       ]
+    },
+    {
+      "invoice_id": "INV-2026-1142",
+      "processado_em": "2026-11-10T16:19:54.004600Z",
+      "empresa_id": "EMP-002",
+      "empresa_nome": "Beta Logística e Transportes Ltda",
+      "periodo_referencia": "Novembro/2026",
+      "valor_total": 25800.0,
+      "total_line_items": 3,
+      "workers_paralelos": 3,
+      "status": "REQUER_APROVACAO",
+      "divergencias": [
+        "Valor total R$25,800.00 está 101.7% acima da média histórica R$12,791.67 (limite: 15%)",
+        "Fornecedor(es) não encontrado(s) no histórico: Fornecedor NovoBrasil"
+      ],
+      "line_items_processados": [
+        {
+          "item_id": "LI-001",
+          "descricao": "Óleo Diesel S10 — 8.000 litros",
+          "fornecedor": "Auto Posto Rodovia",
+          "valor": 12800.0,
+          "categoria": "Combustível",
+          "fornecedor_aprovado": true,
+          "divergencias_item": []
+        },
+        {
+          "item_id": "LI-002",
+          "descricao": "Arla 32 — 500 litros",
+          "fornecedor": "Auto Posto Rodovia",
+          "valor": 1200.0,
+          "categoria": "Fluido veicular",
+          "fornecedor_aprovado": true,
+          "divergencias_item": []
+        },
+        {
+          "item_id": "LI-003",
+          "descricao": "Pneus Radiais 295/80 R22.5 — 8 unidades",
+          "fornecedor": "Fornecedor NovoBrasil",
+          "valor": 11800.0,
+          "categoria": "Pneus e rodas",
+          "fornecedor_aprovado": false,
+          "divergencias_item": [
+            "Fornecedor(es) não encontrado(s) no histórico: Fornecedor NovoBrasil"
+          ]
+        }
+      ],
+      "contatos_aprovadores": [
+        {
+          "tipo": "Administrativo",
+          "nome": "Marcos Vinícius",
+          "area": "Gestão de Frota",
+          "email": "marcos.vinicius@betalogistica.com",
+          "telefone": "(11) 97654-1111"
+        },
+        {
+          "tipo": "Pessoa de Confiança",
+          "nome": "Juliano Antunes",
+          "area": "Gerente de Operações",
+          "email": "juliano.antunes@betalogistica.com",
+          "telefone": "(11) 97654-2222"
+        }
+      ]
+    },
+    {
+      "invoice_id": "INV-2026-1142",
+      "fonte": "PDF",
+      "arquivo": "nota_fiscal_INV-2026-1142.pdf",
+      "processado_em": "2026-11-11T15:41:04.398781Z",
+      "empresa_id": "EMP-002",
+      "periodo_referencia": "Novembro/2026",
+      "valor_total": 25800.0,
+      "total_line_items": 3,
+      "workers_paralelos": 3,
+      "status": "REQUER_APROVACAO",
+      "divergencias": [
+        "Valor total R$25,800.00 está 101.7% acima da média histórica R$12,791.67 (limite: 15%)",
+        "Fornecedor(es) não encontrado(s) no histórico: Fornecedor NovoBrasil"
+      ],
+      "line_items_processados": [
+        {
+          "item_id": "LI-001",
+          "descricao": "Óleo Diesel S10 — 8.000 litros",
+          "fornecedor": "Auto Posto Rodovia",
+          "valor": 12800.0,
+          "fornecedor_aprovado": true,
+          "divergencias_item": []
+        },
+        {
+          "item_id": "LI-002",
+          "descricao": "Arla 32 — 500 litros",
+          "fornecedor": "Auto Posto Rodovia",
+          "valor": 1200.0,
+          "fornecedor_aprovado": true,
+          "divergencias_item": []
+        },
+        {
+          "item_id": "LI-003",
+          "descricao": "Pneus Radiais 295/80 R22.5 — 8",
+          "fornecedor": "Fornecedor NovoBrasil",
+          "valor": 11800.0,
+          "fornecedor_aprovado": false,
+          "divergencias_item": [
+            "Fornecedor(es) não encontrado(s) no histórico: Fornecedor NovoBrasil"
+          ]
+        }
+      ],
+      "contatos_aprovadores": [
+        {
+          "tipo": "Administrativo",
+          "nome": "Marcos Vinícius",
+          "area": "Gestão de Frota",
+          "email": "marcos.vinicius@betalogistica.com",
+          "telefone": "(11) 97654-1111"
+        },
+        {
+          "tipo": "Pessoa de Confiança",
+          "nome": "Juliano Antunes",
+          "area": "Gerente de Operações",
+          "email": "juliano.antunes@betalogistica.com",
+          "telefone": "(11) 97654-2222"
+        }
+      ]
     }
   ]
 }

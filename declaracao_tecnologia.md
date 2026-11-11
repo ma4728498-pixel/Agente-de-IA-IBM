@@ -26,17 +26,40 @@ Bob diagnosticou e corrigiu múltiplos problemas em tempo real:
 - Criou o `.env.example` como template documentado
 - Configurou o `requirements.txt` com versões fixas para deploy reproduzível
 
-### 5. Servidor MCP — IBM Bob como motor conversacional com sub-agentes e document ingestion
-Bob projetou e implementou o servidor MCP em `mcp/server.py`, expondo 6 ferramentas ao IBM Bob via protocolo MCP (stdio). Cada ferramenta tem responsabilidade única e funciona como um **sub-agente especializado** orquestrado pelo Bob:
+### 5. IBM Bob no Agent Mode — document ingestion de nota fiscal PDF como caso central
+
+Este é o caso de uso central que demonstra o **Bob no Agent Mode fazendo document understanding de um business document real**.
+
+**Fluxo completo (executado e documentado em `exemplo_saida.md`, Cenário D):**
+
+| Etapa | Tecnologia | Descrição |
+|---|---|---|
+| **Trigger** | IBM Bob Agent Mode | Usuário digita: *"Processe a nota fiscal INV-2026-1142.pdf"* |
+| **PDF Ingestion** | `pdfplumber` via MCP | Bob aciona `processar_pdf_invoice`; extrai cabeçalho + tabela de line items do PDF |
+| **Extração paralela** | `ThreadPoolExecutor` | 3 workers simultâneos — um por line item — verificam fornecedores em paralelo na KB |
+| **Verificação consolidada** | knowledge base (JSON) | Valor total e localização comparados contra média histórica da EMP-002 |
+| **Registro ERP** | `erp_mock.json` | Resultado estruturado gravado com status por item e divergências detectadas |
+| **Resposta ao usuário** | IBM Bob Agent Mode | Bob consolida JSON e apresenta diagnóstico em linguagem natural |
+
+**Resultado real da execução com `nota_fiscal_INV-2026-1142.pdf` (EMP-002, Novembro/2026):**
+- ✅ LI-001 — Óleo Diesel S10 (Auto Posto Rodovia): em conformidade
+- ✅ LI-002 — Arla 32 (Auto Posto Rodovia): em conformidade
+- ❌ LI-003 — Pneus Radiais (Fornecedor NovoBrasil): fornecedor não homologado
+- ❌ Valor total R$ 25.800,00: 101,7% acima da média histórica (R$ 12.791,67)
+- **Aprovadores acionados automaticamente:** Marcos Vinícius e Juliano Antunes
+
+Bob projetou e implementou o servidor MCP em `mcp/server.py`, expondo 8 ferramentas ao IBM Bob via protocolo MCP (stdio). Cada ferramenta tem responsabilidade única e funciona como um **sub-agente especializado** orquestrado pelo Bob:
 
 - `listar_empresas` — sub-agente de descoberta: retorna as 8 empresas da knowledge base
 - `obter_empresa` — sub-agente de contexto: recupera histórico completo por ID ou nome
 - `verificar_conformidade` — **sub-agente de auditoria**: aplica os 3 critérios de conformidade para uma empresa, buscando o histórico da KB internamente; retorna structured JSON output com `requer_aprovacao`, `divergencias`, `variacao_percentual` e `contatos_aprovadores`
 - `enviar_solicitacao_aprovacao` — **sub-agente de notificação**: gera e-mails formais de aprovação para os 2 contatos responsáveis
-- `analisar_lote_csv` — **document ingestion**: ingere um arquivo CSV de transações e executa verificação para todas as empresas, retornando relatório consolidado
-- `analisar_lote_csv_json` — **document ingestion + parallel sub-tasks + structured JSON output**: ingere o CSV e dispara verificações em paralelo via `ThreadPoolExecutor` (um worker por empresa), retornando JSON estruturado com `resumo`, `resultados` e `acoes_necessarias` — adequado para trigger-based workflows
+- `analisar_lote_csv` — **document ingestion (CSV)**: ingere um arquivo CSV de transações e executa verificação para todas as empresas, retornando relatório consolidado
+- `analisar_lote_csv_json` — **document ingestion + parallel sub-tasks + structured JSON output**: ingere o CSV e dispara verificações em paralelo via `ThreadPoolExecutor`, retornando JSON estruturado com `resumo`, `resultados` e `acoes_necessarias`
+- `processar_invoice` — **document ingestion (JSON invoice)**: ingere invoice JSON, extrai line items em paralelo e grava no mock ERP
+- `processar_pdf_invoice` — **document ingestion (PDF nota fiscal) — caso central do Agent Mode**: ingere PDF de nota fiscal via `pdfplumber`, extrai campos e line items, verifica conformidade de cada item em paralelo e registra no mock ERP
 
-O servidor foi registrado em `.bob/mcp.json`. O IBM Bob atua como **orquestrador conversacional**: recebe a solicitação em linguagem natural, faz document ingestion do CSV via MCP, despacha os sub-agentes de auditoria em paralelo e aciona o sub-agente de notificação para cada divergência encontrada.
+O servidor foi registrado em `.bob/mcp.json`. O IBM Bob atua como **orquestrador conversacional no Agent Mode**: recebe o caminho do documento de negócio em linguagem natural, aciona `processar_pdf_invoice` para document understanding, despacha sub-agentes de auditoria em paralelo e entrega o diagnóstico completo — tudo sem intervenção manual.
 
 ### 6. Documentação
 Bob redigiu e atualizou o `README.md` com estrutura de projeto, instruções de deploy, diagrama de arquitetura Mermaid, seção de testes e instruções de registro do MCP server.

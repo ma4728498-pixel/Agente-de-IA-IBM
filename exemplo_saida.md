@@ -105,12 +105,11 @@ CONTATOS ACIONADOS:
 MODELOS DE E-MAIL GERADOS PARA ENVIO
 ─────────────────────────────────────────────────────────────────────
 
-┌─────────────────────────────────────────────────────────────────┐
+─────────────────────────────────────────────────────────────────
   SOLICITAÇÃO DE APROVAÇÃO — TATIANA FARIAS
   Para: tatiana.farias@etasolar.com
-├─────────────────────────────────────────────────────────────────┤
-  Assunto: [CONFORMIDADE — APROVAÇÃO NECESSÁRIA] Divergência detectada —
-           Eta Energia Solar e Sustentabilidade / Outubro/2026
+  Assunto: [CONFORMIDADE — APROVAÇÃO NECESSÁRIA] Divergência detectada — Eta Energia Solar e Sustentabilidade / Outubro/2026
+─────────────────────────────────────────────────────────────────
 
   Prezado(a) Tatiana Farias,
 
@@ -137,14 +136,13 @@ MODELOS DE E-MAIL GERADOS PARA ENVIO
 
   Atenciosamente,
   Sistema de Conformidade de Compras — Agente de Conformidade VF
-└─────────────────────────────────────────────────────────────────┘
+─────────────────────────────────────────────────────────────────
 
-┌─────────────────────────────────────────────────────────────────┐
+─────────────────────────────────────────────────────────────────
   SOLICITAÇÃO DE APROVAÇÃO — MARCELO H. DINIZ
   Para: marcelo.diniz@etasolar.com
-├─────────────────────────────────────────────────────────────────┤
-  Assunto: [CONFORMIDADE — APROVAÇÃO NECESSÁRIA] Divergência detectada —
-           Eta Energia Solar e Sustentabilidade / Outubro/2026
+  Assunto: [CONFORMIDADE — APROVAÇÃO NECESSÁRIA] Divergência detectada — Eta Energia Solar e Sustentabilidade / Outubro/2026
+─────────────────────────────────────────────────────────────────
 
   Prezado(a) Marcelo H. Diniz,
 
@@ -171,7 +169,7 @@ MODELOS DE E-MAIL GERADOS PARA ENVIO
 
   Atenciosamente,
   Sistema de Conformidade de Compras — Agente de Conformidade VF
-└─────────────────────────────────────────────────────────────────┘
+─────────────────────────────────────────────────────────────────
 ```
 
 ---
@@ -202,3 +200,113 @@ CRITÉRIOS VERIFICADOS:
 Nenhuma divergência detectada. A transação está em conformidade e
 não requer aprovação adicional.
 ```
+
+---
+
+## Cenário D — Fluxo completo: ingestão de nota fiscal PDF com extração paralela de line items
+
+> **Este é o caso de uso central do IBM Bob no Agent Mode.**  
+> O usuário entrega ao Bob a nota fiscal em PDF com uma instrução em linguagem natural.  
+> O Bob aciona `processar_pdf_invoice` via MCP, que extrai o documento com `pdfplumber`,  
+> processa cada line item em paralelo (`ThreadPoolExecutor`, 3 workers simultâneos) e  
+> registra o resultado no mock ERP — tudo em uma única interação conversacional.
+
+**Arquivo:** `nota_fiscal_INV-2026-1142.pdf`  
+**Trigger:** Usuário digita *"Processe a nota fiscal INV-2026-1142.pdf"* no IBM Bob (Agent Mode)  
+**Empresa:** Beta Logística e Transportes Ltda (EMP-002)  
+**Período:** Novembro/2026 | **Localização:** Campinas, SP | **Valor total:** R$ 25.800,00
+
+### Instrução ao Bob
+
+```
+Processe a nota fiscal mcp/dados/nota_fiscal_INV-2026-1142.pdf
+```
+
+### Saída real de `processar_pdf_invoice`
+
+```json
+{
+  "invoice_id": "INV-2026-1142",
+  "fonte": "PDF",
+  "arquivo": "nota_fiscal_INV-2026-1142.pdf",
+  "empresa_id": "EMP-002",
+  "periodo_referencia": "Novembro/2026",
+  "localizacao": "Campinas, SP",
+  "valor_total": 25800.0,
+  "resumo": {
+    "total_line_items": 3,
+    "workers_paralelos": 3,
+    "requer_aprovacao": true,
+    "divergencias": [
+      "Valor total R$25,800.00 está 101.7% acima da média histórica R$12,791.67 (limite: 15%)",
+      "Fornecedor(es) não encontrado(s) no histórico: Fornecedor NovoBrasil"
+    ],
+    "erp_atualizado": true
+  },
+  "line_items_processados": [
+    {
+      "item_id": "LI-001",
+      "descricao": "Óleo Diesel S10 — 8.000 litros",
+      "fornecedor": "Auto Posto Rodovia",
+      "valor": 12800.0,
+      "fornecedor_aprovado": true,
+      "divergencias_item": []
+    },
+    {
+      "item_id": "LI-002",
+      "descricao": "Arla 32 — 500 litros",
+      "fornecedor": "Auto Posto Rodovia",
+      "valor": 1200.0,
+      "fornecedor_aprovado": true,
+      "divergencias_item": []
+    },
+    {
+      "item_id": "LI-003",
+      "descricao": "Pneus Radiais 295/80 R22.5 — 8 unidades",
+      "fornecedor": "Fornecedor NovoBrasil",
+      "valor": 11800.0,
+      "fornecedor_aprovado": false,
+      "divergencias_item": [
+        "Fornecedor(es) não encontrado(s) no histórico: Fornecedor NovoBrasil"
+      ]
+    }
+  ],
+  "contatos_aprovadores": [
+    {
+      "tipo": "Administrativo",
+      "nome": "Marcos Vinícius",
+      "area": "Gestão de Frota",
+      "email": "marcos.vinicius@betalogistica.com",
+      "telefone": "(11) 97654-1111"
+    },
+    {
+      "tipo": "Pessoa de Confiança",
+      "nome": "Juliano Antunes",
+      "area": "Gerente de Operações",
+      "email": "juliano.antunes@betalogistica.com",
+      "telefone": "(11) 97654-2222"
+    }
+  ]
+}
+```
+
+### O que aconteceu internamente
+
+| Etapa | Descrição |
+|---|---|
+| **1. Trigger** | Bob recebe instrução em linguagem natural no Agent Mode |
+| **2. PDF Ingestion** | `processar_pdf_invoice` extrai cabeçalho e tabela de line items via `pdfplumber` |
+| **3. Extração paralela** | `ThreadPoolExecutor` despacha 3 workers simultâneos — um por line item |
+| **4. Verificação por item** | Cada worker verifica fornecedor do item contra o histórico da KB |
+| **5. Verificação consolidada** | Valor total e localização verificados contra a média histórica da EMP-002 |
+| **6. Registro no ERP** | Resultado estruturado gravado em `erp_mock.json` com status e divergências |
+| **7. Resposta ao Bob** | JSON estruturado devolvido; Bob consolida e apresenta diagnóstico ao usuário |
+
+### Resultado
+
+- ✅ LI-001 (Óleo Diesel — Auto Posto Rodovia): **Em conformidade**
+- ✅ LI-002 (Arla 32 — Auto Posto Rodovia): **Em conformidade**
+- ❌ LI-003 (Pneus — Fornecedor NovoBrasil): **Fornecedor não homologado**
+- ❌ Valor total R$ 25.800,00: **101,7% acima da média histórica** (R$ 12.791,67)
+
+**Aprovadores acionados:** Marcos Vinícius e Juliano Antunes (Beta Logística e Transportes Ltda)
